@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { History, Edit3, Calendar } from 'lucide-react';
 import { GameResult } from '../types';
-import { getAllResultsSorted } from '../storage';
+import { getAllResultsSorted } from '../utils/storage';
 
 export default function RecordsTab({ setActiveTab }: { setActiveTab: (t: string) => void }) {
   const [records, setRecords] = useState<GameResult[]>([]);
@@ -34,15 +34,13 @@ export default function RecordsTab({ setActiveTab }: { setActiveTab: (t: string)
                   <Calendar className="w-4 h-4 text-teal-400" />
                   <span className="font-semibold text-white">{record.date}</span>
                 </div>
-                <button 
+                <button
                   onClick={() => handleEdit(record.date)}
                   className="p-1 text-slate-400 hover:text-teal-400 transition-colors"
-                  title="Edit this record"
                 >
                   <Edit3 className="w-4 h-4" />
                 </button>
               </div>
-              
               <div className="p-4 grid grid-cols-4 gap-2 text-center divide-x divide-slate-800">
                 <div>
                   <div className="text-xs text-slate-500 mb-1">FD</div>

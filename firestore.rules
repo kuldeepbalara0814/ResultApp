@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allows anyone to read and write to the database (since the app has custom auth)
+    // NOTE: This is inherently insecure for a production app but matches the existing local storage security model.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

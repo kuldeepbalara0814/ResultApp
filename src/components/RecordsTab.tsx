@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { History, Edit3, Calendar } from 'lucide-react';
 import { GameResult } from '../types';
-import { getAllResultsSorted } from '../utils/storage';
+import { getAllResultsSorted } from '../storage';
 
 export default function RecordsTab({ setActiveTab }: { setActiveTab: (t: string) => void }) {
   const [records, setRecords] = useState<GameResult[]>([]);
@@ -11,11 +11,7 @@ export default function RecordsTab({ setActiveTab }: { setActiveTab: (t: string)
   }, []);
 
   const handleEdit = (date: string) => {
-    // Navigate to Result tab, we would ideally pass the date to the result tab via context or props, 
-    // but for now, the Result tab automatically loads data based on its own date picker.
-    // If we want to deep link, we need a global state. For simplicity, we just switch tabs.
     setActiveTab('result');
-    // NOTE: For a real app, you'd want to set the globally selected date here.
   };
 
   return (

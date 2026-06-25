@@ -5,7 +5,7 @@ import UserManagementModal from './UserManagementModal';
 import GeminiAssistantModal from './GeminiAssistantModal';
 import { getCurrentUser, getCurrentRole } from '../utils/auth';
 import { useGoogleLogin } from '@react-oauth/google';
-import { getTrackerEntries } from '../utils/storage';
+import { getTrackerEntries } from '../storage';
 
 export default function HomeTab({ setActiveTab, onLogout }: { setActiveTab: (t: string) => void, onLogout: () => void }) {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -268,4 +268,4 @@ export default function HomeTab({ setActiveTab, onLogout }: { setActiveTab: (t: 
 
     </div>
   );
-        }
+}

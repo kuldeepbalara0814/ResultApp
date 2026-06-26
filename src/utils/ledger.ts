@@ -1,34 +1,21 @@
-import { getTrackerEntries, getInitialCapital } from './storage';
+import { getTrackerEntries } from './storage';
 import { TrackerEntry } from '../types';
 
-export interface LedgerResult {
-  history: any[];
-  finalCash: number;
-  finalBank: number;
-  currentDailyLimit: number;
-  initialCapital: number;
-  currentRates: Record<string, number>; 
-}
-
-export function calculateLedger(): LedgerResult {
+export function calculateLedger() {
   const entries = getTrackerEntries();
   const sortedEntries = [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   
-  const initialCap = getInitialCapital();
-  let currentCash = initialCap;
-  let currentBank = 0;
-  
-  const currentRates = {
-    FD: 95,
-    GB: 95,
-    GL: 95,
-    DS: 95
-  };
+  const TOTAL_CAPITAL = 15000;
+  const EMERGENCY_FUND = 12900;
+  const DAILY_PLAY_COST = 2100;
+
+  let currentCash = TOTAL_CAPITAL; 
+  let currentBank = 0; 
   
   const history = [];
 
   for (const entry of sortedEntries) {
-    if (!entry.isPlay) {
+    if (!entry.isPlay || entry.passLocation === 'PENDING') {
       history.push({
         ...entry,
         cost: 0,
@@ -40,32 +27,23 @@ export function calculateLedger(): LedgerResult {
       continue;
     }
 
-    if (entry.passLocation === 'PENDING') {
-      history.push({
-        ...entry,
-        cost: 0,
-        grossReturn: 0,
-        netProfit: 0,
-        runningCash: currentCash,
-        runningBank: currentBank
-      });
-      continue;
-    }
-
-    const currentLimit = Math.min(Math.floor(currentCash), 100000); 
-    const cost = Math.round(currentLimit * 0.10); 
-    
+    const cost = DAILY_PLAY_COST;
     let grossReturn = 0;
-    if (entry.passLocation !== 'FAIL' && entry.passLocation !== 'PENDING' && entry.passLocation !== null) {
-      grossReturn = Math.round(cost * 9.5);
+
+    // पासिंग का हिसाब
+    if (entry.passLocation !== 'FAIL') {
+      if (entry.passLocation === 'FD') grossReturn = 10 * 95;
+      if (entry.passLocation === 'GB') grossReturn = 15 * 95;
+      if (entry.passLocation === 'GL') grossReturn = 20 * 95;
+      if (entry.passLocation === 'DS') grossReturn = 25 * 95;
     }
     
     const netProfit = grossReturn - cost;
     
+    // 50-50 कंपाउंडिंग फार्मूला
     if (netProfit > 0) {
       const bankShare = Math.floor(netProfit / 2);
       const cashShare = netProfit - bankShare;
-      
       currentBank += bankShare;
       currentCash += cashShare;
     } else {
@@ -82,14 +60,12 @@ export function calculateLedger(): LedgerResult {
     });
   }
 
-  const finalLimit = Math.min(Math.floor(currentCash), 100000);
-
   return {
     history: history.reverse(),
     finalCash: Math.round(currentCash),
     finalBank: Math.round(currentBank),
-    currentDailyLimit: finalLimit,
-    initialCapital: initialCap,
-    currentRates
+    emergencyFund: EMERGENCY_FUND,
+    activeCapital: DAILY_PLAY_COST,
+    initialCapital: TOTAL_CAPITAL
   };
 }

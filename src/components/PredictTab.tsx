@@ -13,8 +13,7 @@ const FORMULAS = [
   { id: '6', label: '6 - Murda' },
   { id: '7', label: '7 - Haruf' },
   { id: '8', label: '8 - Baki' },
-  { id: '9', label: '9 - Month Trend' },
-  { id: '10', label: '10 - 3 Ka Logic' }
+  { id: '9', label: '9 - Month Trend' }
 ];
 
 export default function PredictTab() {
@@ -32,20 +31,17 @@ export default function PredictTab() {
   const [result, setResult] = useState<PredictionResult | null>(null);
   const [isPredicting, setIsPredicting] = useState(false);
   
-  // States for sharing & tracking
   const [selectedGame, setSelectedGame] = useState<'FD' | 'GB' | 'GL' | 'DS'>('FD');
   const [copied, setCopied] = useState(false);
   const [logged, setLogged] = useState(false);
 
-  // Get current rates based on risk management
   const ledger = useMemo(() => calculateLedger(), []);
 
-  // Handle Auto mode fetching latest results
   useEffect(() => {
     if (inputMode === 'auto') {
       const allResults = getAllResultsSorted();
       if (allResults.length > 0) {
-        const latest = allResults[0]; 
+        const latest = allResults[0];
         setInputs(prev => ({
           ...prev,
           fd: latest.fd,
@@ -89,18 +85,6 @@ export default function PredictTab() {
         if (r.ds) pastMurda.push(r.ds);
       });
 
-      const past4DaysMurda: string[] = [];
-      const past4Days = pastResults
-        .filter(r => new Date(r.date) < new Date(inputs.date))
-        .slice(0, 4);
-
-      past4Days.forEach(r => {
-        if (r.fd) past4DaysMurda.push(r.fd);
-        if (r.gb) past4DaysMurda.push(r.gb);
-        if (r.gl) past4DaysMurda.push(r.gl);
-        if (r.ds) past4DaysMurda.push(r.ds);
-      });
-
       const currentYm = inputs.date.substring(0, 7);
       const currentMonthNums: string[] = [];
       pastResults.filter(r => r.date.startsWith(currentYm)).forEach(r => {
@@ -108,33 +92,6 @@ export default function PredictTab() {
         if (r.gb) currentMonthNums.push(r.gb);
         if (r.gl) currentMonthNums.push(r.gl);
         if (r.ds) currentMonthNums.push(r.ds);
-      });
-
-      const recent7DaysNums: string[] = [];
-      const past7Days = pastResults
-        .filter(r => new Date(r.date) < new Date(inputs.date))
-        .slice(0, 7);
-      
-      past7Days.forEach(r => {
-        if (r.fd) recent7DaysNums.push(r.fd);
-        if (r.gb) recent7DaysNums.push(r.gb);
-        if (r.gl) recent7DaysNums.push(r.gl);
-        if (r.ds) recent7DaysNums.push(r.ds);
-      });
-
-      const historyBlocks: string[][] = [];
-      const past15Days = pastResults
-        .filter(r => new Date(r.date) < new Date(inputs.date))
-        .slice(0, 15)
-        .reverse(); 
-
-      past15Days.forEach(r => {
-        const dayNums: string[] = [];
-        if (r.fd) dayNums.push(r.fd);
-        if (r.gb) dayNums.push(r.gb);
-        if (r.gl) dayNums.push(r.gl);
-        if (r.ds) dayNums.push(r.ds);
-        if (dayNums.length > 0) historyBlocks.push(dayNums);
       });
 
       const todaysRes: string[] = [];
@@ -155,18 +112,7 @@ export default function PredictTab() {
         }
       }
 
-      const res = calculatePrediction(
-        inputs, 
-        selectedFormulas, 
-        pastMurda, 
-        currentMonthNums, 
-        todaysRes.slice(0, 4), 
-        past4DaysMurda,
-        recent7DaysNums, 
-        historyBlocks,   
-        true             
-      );
-      
+      const res = calculatePrediction(inputs, selectedFormulas, pastMurda, currentMonthNums, todaysRes.slice(0, 4));
       setResult(res);
       setIsPredicting(false);
     }, 800);
@@ -176,25 +122,16 @@ export default function PredictTab() {
   const currentRate = ledger.currentRates[selectedGame];
   const totalAmount = allJodis.length * currentRate;
 
-  const generateSlipText = () => {
-    return `📅 Date: ${inputs.date}\n🎯 Game: ${selectedGame}\n🎲 Jodis (${allJodis.length}):\n${allJodis.join(', ')}\n\n💰 Rate: ${currentRate} Into\n💵 Total: ₹${totalAmount}`;
-  };
-
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(generateSlipText());
+    const text = `📅 Date: ${inputs.date}\n🎯 Game: ${selectedGame}\n🎲 Jodis (${allJodis.length}):\n${allJodis.join(', ')}\n\n💰 Rate: ${currentRate} Into\n💵 Total: ₹${totalAmount}`;
+    navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const shareToWhatsApp = () => {
-    const text = generateSlipText();
-    const encodedText = encodeURIComponent(text);
-    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
-  };
-
   const handleLogToTracker = () => {
     saveTrackerEntry({
-      id: inputs.date, 
+      id: inputs.date,
       date: inputs.date,
       isPlay: true,
       passLocation: 'PENDING'
@@ -335,23 +272,13 @@ export default function PredictTab() {
               </div>
 
               <div className="flex flex-col gap-3 pt-2">
-                <div className="flex gap-2">
-                  <button 
-                    onClick={copyToClipboard}
-                    className="flex-1 bg-[#1F2937] hover:bg-[#374151] border border-slate-700 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
-                  >
-                    {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
-                    {copied ? 'कॉपी हो गया' : 'कॉपी करें'}
-                  </button>
-
-                  <button 
-                    onClick={shareToWhatsApp}
-                    className="flex-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-500 font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <Send className="w-5 h-5" />
-                    WhatsApp
-                  </button>
-                </div>
+                <button 
+                  onClick={copyToClipboard}
+                  className="w-full bg-[#1F2937] hover:bg-[#374151] border border-slate-700 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                >
+                  {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
+                  {copied ? 'कॉपी हो गया!' : 'खाईवाल के लिए कॉपी करें'}
+                </button>
 
                 <button 
                   onClick={handleLogToTracker}

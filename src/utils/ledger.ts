@@ -1,5 +1,4 @@
 import { getTrackerEntries } from './storage';
-import { TrackerEntry } from '../types';
 
 export function calculateLedger() {
   const entries = getTrackerEntries();
@@ -30,7 +29,6 @@ export function calculateLedger() {
     const cost = DAILY_PLAY_COST;
     let grossReturn = 0;
 
-    // पासिंग का हिसाब
     if (entry.passLocation !== 'FAIL') {
       if (entry.passLocation === 'FD') grossReturn = 10 * 95;
       if (entry.passLocation === 'GB') grossReturn = 15 * 95;
@@ -40,7 +38,6 @@ export function calculateLedger() {
     
     const netProfit = grossReturn - cost;
     
-    // 50-50 कंपाउंडिंग फार्मूला
     if (netProfit > 0) {
       const bankShare = Math.floor(netProfit / 2);
       const cashShare = netProfit - bankShare;
@@ -64,8 +61,8 @@ export function calculateLedger() {
     history: history.reverse(),
     finalCash: Math.round(currentCash),
     finalBank: Math.round(currentBank),
+    currentDailyLimit: DAILY_PLAY_COST,
     emergencyFund: EMERGENCY_FUND,
-    activeCapital: DAILY_PLAY_COST,
     initialCapital: TOTAL_CAPITAL
   };
 }

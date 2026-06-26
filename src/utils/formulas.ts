@@ -135,7 +135,8 @@ export const calculatePrediction = (
   selectedFormulas: string[],
   pastMurda: string[] = [],
   currentMonthNums: string[] = [],
-  todaysRes: string[] = []
+  todaysRes: string[] = [],
+  past4DaysMurda: string[] = []
 ): PredictionResult => {
   const dateObj = new Date(inputs.date);
   const jsDay = dateObj.getDay();
@@ -161,6 +162,8 @@ export const calculatePrediction = (
 
   const outerHaruf = parseInt(dayOfMonth.toString().slice(-1));
   const rashi = (outerHaruf + 5) % 10;
+
+  const LOGIC_3_JORIS = ['30', '03', '41', '14', '74', '47', '85', '58', '96', '69'];
 
   Object.keys(counts).forEach(jodi => {
     let score = counts[jodi];
@@ -192,14 +195,20 @@ export const calculatePrediction = (
     if (selectedFormulas.includes('2') && EVERGREEN.includes(jodi[0]) && EVERGREEN.includes(jodi[1])) { score += 7; details.push("EverG(+7)"); }
     if (selectedFormulas.includes('9') && currentMonthNums.includes(jodi)) { score += 3; details.push("MonthTrend(+3)"); }
 
+    if (selectedFormulas.includes('10')) {
+      const isLogic3Active = LOGIC_3_JORIS.some(j => past4DaysMurda.includes(j));
+      if (isLogic3Active && LOGIC_3_JORIS.includes(jodi)) {
+        score += 3;
+        details.push("Logic3(+3)");
+      }
+    }
+
     jodiScores[jodi] = score;
     scoreBreakdown[jodi] = details;
   });
 
-  const filteredJodis: Record<string, number> = {};
-  Object.keys(jodiScores).forEach(j => {
-    if (!JODAS.includes(j)) filteredJodis[j] = jodiScores[j];
-  });
+  const filteredJodis: Record<string, number> = jodiScores;
+
 
   const sortedJodis = Object.keys(filteredJodis).sort((a, b) => filteredJodis[b] - filteredJodis[a]);
   const final30 = sortedJodis.slice(0, 30);

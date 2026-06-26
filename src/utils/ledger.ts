@@ -108,3 +108,6 @@ export const getOverallStats = () => {
     winRate: entries.length > 0 ? (entries.filter(e => e.status === 'win').length / entries.length) * 100 : 0
   };
 };
+
+// Vercel के एरर को ठीक करने के लिए जोड़ा गया कोड
+export const calculateLedger = calculateDailyLedger;

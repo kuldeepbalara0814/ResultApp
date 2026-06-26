@@ -1,0 +1,19 @@
+{
+  "name": "Result App Master",
+  "short_name": "ResultApp",
+  "description": "Sahil Master System & Ledger",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B1120",
+  "theme_color": "#111827",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/10435/10435165.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Target, Wallet, Landmark, TrendingUp, Edit2, Trash2, Settings, BarChart2, Activity } from 'lucide-react';
+import { Target, Wallet, Landmark, TrendingUp, Edit2, Trash2, Settings, BarChart2, Activity, Download } from 'lucide-react';
 import { TrackerEntry, PassLocation } from '../types';
 import { getTrackerEntries, saveTrackerEntry, deleteTrackerEntry, setInitialCapital } from '../utils/storage';
 import { calculateLedger } from '../utils/ledger';
@@ -22,9 +22,6 @@ export default function TrackerTab() {
 
   const ledger = useMemo(() => calculateLedger(), [entries]);
 
-  // ==========================================
-  // [NEW] Advanced Market Performance Logic
-  // ==========================================
   const marketPerformance = useMemo(() => {
     const stats: Record<string, { wins: number, recentDates: string[] }> = {
       FD: { wins: 0, recentDates: [] },
@@ -32,11 +29,7 @@ export default function TrackerTab() {
       GL: { wins: 0, recentDates: [] },
       DS: { wins: 0, recentDates: [] }
     };
-
     let totalCompletedPlays = 0;
-
-    // पुराना इतिहास पहले प्रोसेस होता है, इसलिए हम unshift का यूज़ करेंगे
-    // ताकि सबसे नई तारीख लिस्ट में सबसे आगे रहे
     ledger.history.forEach(h => {
       if (h.isPlay && h.passLocation !== 'PENDING') {
         totalCompletedPlays++;
@@ -46,7 +39,6 @@ export default function TrackerTab() {
         }
       }
     });
-
     return { stats, totalCompletedPlays };
   }, [ledger.history]);
 
@@ -84,6 +76,35 @@ export default function TrackerTab() {
     }
   };
 
+  // ==========================================
+  // [NEW] Excel / CSV Export Logic
+  // ==========================================
+  const handleExportCSV = () => {
+    const headers = ['Date', 'Play Status', 'Location', 'Investment(Rs)', 'Return(Rs)', 'Net Profit(Rs)', 'Total Cash', 'Safe Bank'];
+    
+    const rows = ledger.history.map(record => {
+      const status = record.isPlay ? 'Played' : 'No Play';
+      const loc = record.passLocation || '-';
+      return [
+        record.date, 
+        status, 
+        loc, 
+        record.cost, 
+        record.grossReturn, 
+        record.netProfit, 
+        record.runningCash, 
+        record.runningBank
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `App_Report_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
   const currentPocket = Math.min(ledger.finalCash, ledger.currentDailyLimit);
   const currentEmergency = Math.max(0, ledger.finalCash - currentPocket);
   const recentHistory = [...ledger.history].slice(0, 7).reverse();
@@ -95,9 +116,15 @@ export default function TrackerTab() {
         <h1 className="text-xl font-bold text-teal-400 flex items-center gap-2">
           <Target className="w-6 h-6" /> Risk Management
         </h1>
-        <button onClick={() => setShowSettings(!showSettings)} className="p-2 text-slate-400 hover:text-white">
-          <Settings className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Export Button Added Here */}
+          <button onClick={handleExportCSV} className="p-2 text-teal-400 hover:text-teal-300 bg-teal-400/10 rounded-full transition-colors" title="Download Report">
+            <Download className="w-5 h-5" />
+          </button>
+          <button onClick={() => setShowSettings(!showSettings)} className="p-2 text-slate-400 hover:text-white">
+            <Settings className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {showSettings && (
@@ -140,7 +167,7 @@ export default function TrackerTab() {
         </div>
       </div>
 
-      {/* Market Performance Card (Updated with Win %, Dates, and 2x2 Grid) */}
+      {/* Market Performance Card */}
       <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 shadow-lg">
         <h2 className="text-white font-semibold flex items-center gap-2 mb-4">
           <Activity className="w-5 h-5 text-teal-400" />
@@ -149,13 +176,9 @@ export default function TrackerTab() {
         <div className="grid grid-cols-2 gap-3">
           {['FD', 'GB', 'GL', 'DS'].map((m) => {
             const data = marketPerformance.stats[m];
-            
-            // Win Rate Calculation
             const winRate = marketPerformance.totalCompletedPlays > 0
               ? Math.round((data.wins / marketPerformance.totalCompletedPlays) * 100)
               : 0;
-
-            // Date Formatting (DD/MM)
             const recentText = data.recentDates.length > 0
               ? data.recentDates.slice(0, 2).map(d => {
                   const parts = d.split('-');

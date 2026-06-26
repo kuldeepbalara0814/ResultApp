@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Target, Wallet, Landmark, TrendingUp, Edit2, Trash2, Settings } from 'lucide-react';
+import { Target, Wallet, Landmark, TrendingUp, Edit2, Trash2, Settings, BarChart2 } from 'lucide-react';
 import { TrackerEntry, PassLocation } from '../types';
 import { getTrackerEntries, saveTrackerEntry, deleteTrackerEntry, setInitialCapital } from '../utils/storage';
 import { calculateLedger } from '../utils/ledger';
@@ -72,6 +72,10 @@ export default function TrackerTab() {
   const currentPocket = Math.min(ledger.finalCash, ledger.currentDailyLimit);
   const currentEmergency = Math.max(0, ledger.finalCash - currentPocket);
 
+  // [NEW] Chart Data Preparation (Last 7 Days)
+  const recentHistory = [...ledger.history].slice(0, 7).reverse();
+  const maxProfitAbs = Math.max(...recentHistory.map(r => Math.abs(r.netProfit || 0)), 1);
+
   return (
     <div className="p-4 space-y-6 pb-24 font-sans">
       <div className="flex items-center justify-between mb-2">
@@ -138,6 +142,56 @@ export default function TrackerTab() {
         <div className="text-xs text-slate-500 border-t border-slate-800 pt-2">
           Daily Total Limit: <strong className="text-teal-400">₹{ledger.currentDailyLimit.toLocaleString()}</strong>
         </div>
+      </div>
+
+      {/* [NEW] Profit & Loss Chart Section */}
+      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 shadow-lg">
+        <h2 className="text-white font-semibold flex items-center gap-2 mb-6">
+          <BarChart2 className="w-5 h-5 text-teal-400" />
+          पिछले 7 दिन का P&L ग्राफ़
+        </h2>
+        
+        {recentHistory.length === 0 ? (
+          <div className="text-center text-sm text-slate-500 py-6">ग्राफ़ दिखाने के लिए अभी कोई डेटा नहीं है</div>
+        ) : (
+          <div className="flex items-end justify-between h-36 px-1 border-b border-slate-700/50">
+            {recentHistory.map((record) => {
+              const val = record.netProfit || 0;
+              const isProfit = val > 0;
+              const isLoss = val < 0;
+              const absVal = Math.abs(val);
+              // Calculate height percentage (min 5% so it's visible even for small amounts)
+              const heightPct = val === 0 ? 5 : Math.max((absVal / maxProfitAbs) * 100, 5);
+              
+              // Format value to 'k' for thousands
+              const displayVal = absVal > 999 ? (absVal / 1000).toFixed(1) + 'k' : absVal;
+              const dateStr = record.date.split('-')[2]; // Extract just the day
+
+              return (
+                <div key={record.id} className="flex flex-col items-center gap-1.5 w-8 group">
+                  <span className={`text-[10px] font-bold font-mono transition-opacity ${isProfit ? 'text-green-400' : isLoss ? 'text-red-400' : 'text-slate-500'}`}>
+                    {val !== 0 ? (isProfit ? '+' : '-') : ''}{displayVal}
+                  </span>
+                  
+                  <div className="w-full h-24 flex items-end justify-center bg-slate-800/30 rounded-t-md overflow-hidden relative">
+                    <div 
+                      className={`w-full rounded-t-md transition-all duration-700 ease-out ${
+                        isProfit ? 'bg-gradient-to-t from-green-600 to-green-400 shadow-[0_0_10px_rgba(74,222,128,0.2)]' : 
+                        isLoss ? 'bg-gradient-to-t from-red-600 to-red-400 shadow-[0_0_10px_rgba(248,113,113,0.2)]' : 
+                        'bg-slate-700'
+                      }`}
+                      style={{ height: `${heightPct}%` }}
+                    />
+                  </div>
+                  
+                  <span className="text-[10px] font-medium text-slate-400 mt-1">
+                    {dateStr}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Entry Form */}
@@ -310,4 +364,4 @@ export default function TrackerTab() {
       </div>
     </div>
   );
-              }
+}

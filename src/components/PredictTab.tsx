@@ -111,6 +111,42 @@ export default function PredictTab() {
         if (r.ds) currentMonthNums.push(r.ds);
       });
 
+      // ==========================================
+      // [NEW] PYTHON SYSTEM DATA EXTRACTION
+      // ==========================================
+
+      // 1. recent7DaysNums (Top Haruf nikalne ke liye)
+      const recent7DaysNums: string[] = [];
+      const past7Days = pastResults
+        .filter(r => new Date(r.date) < new Date(inputs.date))
+        .slice(0, 7);
+      
+      past7Days.forEach(r => {
+        if (r.fd) recent7DaysNums.push(r.fd);
+        if (r.gb) recent7DaysNums.push(r.gb);
+        if (r.gl) recent7DaysNums.push(r.gl);
+        if (r.ds) recent7DaysNums.push(r.ds);
+      });
+
+      // 2. historyBlocks (Operator Scanner ke Gap/Daane logic ke liye)
+      // Note: gap 11 din pichhe tak jaata hai, isliye 15 din ka data bhej rahe hain.
+      // .reverse() lagaya hai taki data oldest se newest order me jaaye (jaise Python me tha).
+      const historyBlocks: string[][] = [];
+      const past15Days = pastResults
+        .filter(r => new Date(r.date) < new Date(inputs.date))
+        .slice(0, 15)
+        .reverse(); 
+
+      past15Days.forEach(r => {
+        const dayNums: string[] = [];
+        if (r.fd) dayNums.push(r.fd);
+        if (r.gb) dayNums.push(r.gb);
+        if (r.gl) dayNums.push(r.gl);
+        if (r.ds) dayNums.push(r.ds);
+        if (dayNums.length > 0) historyBlocks.push(dayNums);
+      });
+      // ==========================================
+
       const todaysRes: string[] = [];
       const userInputs = [inputs.ds, inputs.gl, inputs.gb, inputs.fd].filter(v => v !== '');
       todaysRes.push(...userInputs);
@@ -131,8 +167,19 @@ export default function PredictTab() {
         }
       }
 
-      // Reverse todaysRes so it processes in chronological order if needed, but counter just counts them anyway.
-      const res = calculatePrediction(inputs, selectedFormulas, pastMurda, currentMonthNums, todaysRes.slice(0, 4), past4DaysMurda);
+      // [UPDATED] calculationPrediction call with new Python parameters
+      const res = calculatePrediction(
+        inputs, 
+        selectedFormulas, 
+        pastMurda, 
+        currentMonthNums, 
+        todaysRes.slice(0, 4), 
+        past4DaysMurda,
+        recent7DaysNums, // Naya: Haruf Bonus
+        historyBlocks,   // Naya: Operator Traps
+        true             // Naya: useHarufBonus flag (Hamesha On)
+      );
+      
       setResult(res);
       setIsPredicting(false);
     }, 800);

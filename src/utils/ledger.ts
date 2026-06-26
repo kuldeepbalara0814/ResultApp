@@ -15,7 +15,7 @@ export interface DailyLedger {
 }
 
 export const calculateLedger = () => {
-  const entries = getTrackerEntries().reverse(); // Chronological
+  const entries = getTrackerEntries().reverse();
   const initialCapital = getInitialCapital();
   
   let runningCash = initialCapital;
@@ -23,7 +23,6 @@ export const calculateLedger = () => {
   let compoundPool = 0;
   
   const history = entries.map(entry => {
-    // 1. Determine Pocket and Rates for the day
     let pocket = 2100 + compoundPool;
     if (runningCash < pocket && runningCash > 0) {
       pocket = runningCash;
@@ -67,13 +66,11 @@ export const calculateLedger = () => {
       runningCash += netProfit;
       
       if (netProfit > 0) {
-        // 50% to bank, 50% to compound
         const halfProfit = Math.floor(netProfit / 2);
         runningBank += halfProfit;
         runningCash -= halfProfit;
         compoundPool += (netProfit - halfProfit);
       } else if (netProfit < 0) {
-        // Loss reduces compound pool
         compoundPool += netProfit;
         if (compoundPool < 0) compoundPool = 0;
       }
@@ -91,7 +88,6 @@ export const calculateLedger = () => {
     };
   }).reverse();
   
-  // Calculate current state for the top cards
   let currentPocket = 2100 + compoundPool;
   if (runningCash < currentPocket && runningCash > 0) {
     currentPocket = runningCash;

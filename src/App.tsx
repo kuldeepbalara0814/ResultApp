@@ -1,51 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import BottomNav from './components/BottomNav';
-import HomeTab from './components/HomeTab';
-import PredictTab from './components/PredictTab';
-import ResultTab from './components/ResultTab';
-import RecordsTab from './components/RecordsTab';
-import TrackerTab from './components/TrackerTab';
-import LoginScreen from './components/LoginScreen';
-import { logoutUser } from './utils/auth';
+import React, { useState } from 'react';
+import { Lock } from 'lucide-react';
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState('home');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
+  const [input, setInput] = useState('');
 
-  useEffect(() => {
-    const sessionAuth = sessionStorage.getItem('is_auth');
-    if (sessionAuth === 'true') {
-      setIsAuthenticated(true);
+  const handleCheck = (val: string) => {
+    setInput(val);
+    // यहाँ 0814 आपका मेन पिन है, और Kuldeep0814 आपका मास्टर बैकअप पासवर्ड है
+    if (val === '0814' || val === 'Kuldeep0814') {
+      onUnlock();
     }
-  }, []);
-
-  const handleLogin = () => {
-    setIsAuthenticated(true);
   };
-
-  const handleLogout = () => {
-    logoutUser();
-    setIsAuthenticated(false);
-  };
-
-  if (!isAuthenticated) {
-    return <LoginScreen onLogin={handleLogin} />;
-  }
 
   return (
-    <div className="min-h-screen bg-[#0B1120] text-slate-200 font-sans selection:bg-teal-400/30">
-      <div className="max-w-md mx-auto relative min-h-screen bg-[#0B1120] shadow-2xl flex flex-col">
-        {/* Main Content Area */}
-        <div className="overflow-y-auto flex-1 w-full pb-16">
-          {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} onLogout={handleLogout} />}
-          {activeTab === 'predict' && <PredictTab />}
-          {activeTab === 'result' && <ResultTab />}
-          {activeTab === 'records' && <RecordsTab setActiveTab={setActiveTab} />}
-          {activeTab === 'tracker' && <TrackerTab />}
-        </div>
+    <div className="fixed inset-0 bg-[#0B1120] z-50 flex flex-col items-center justify-center p-6 text-white">
+      <div className="bg-[#111827] border border-slate-700 p-8 rounded-3xl text-center shadow-2xl w-full max-w-sm">
+        <Lock className="w-16 h-16 text-teal-400 mx-auto mb-6" />
+        <h2 className="text-2xl font-bold mb-2">App Locked</h2>
+        <p className="text-slate-400 mb-8">सुरक्षा के लिए 4-डिजिट पिन दर्ज करें</p>
         
-        {/* Bottom Navigation */}
-        <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+        <input 
+          type="password"
+          maxLength={15}
+          value={input}
+          onChange={(e) => handleCheck(e.target.value)}
+          placeholder="Enter PIN"
+          className="w-full bg-[#0B1120] border border-slate-700 rounded-xl px-4 py-4 text-center text-2xl font-mono text-teal-400 focus:outline-none focus:border-teal-400"
+        />
+        <p className="mt-4 text-[10px] text-slate-600">PIN: 0814 | Master: Kuldeep0814</p>
       </div>
     </div>
   );

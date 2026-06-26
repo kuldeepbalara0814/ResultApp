@@ -32,7 +32,7 @@ export default function PredictTab() {
   const [result, setResult] = useState<PredictionResult | null>(null);
   const [isPredicting, setIsPredicting] = useState(false);
   
-  // New States for WhatsApp sharing
+  // States for sharing & tracking
   const [selectedGame, setSelectedGame] = useState<'FD' | 'GB' | 'GL' | 'DS'>('FD');
   const [copied, setCopied] = useState(false);
   const [logged, setLogged] = useState(false);
@@ -45,7 +45,7 @@ export default function PredictTab() {
     if (inputMode === 'auto') {
       const allResults = getAllResultsSorted();
       if (allResults.length > 0) {
-        const latest = allResults[0]; // Most recent saved result
+        const latest = allResults[0]; 
         setInputs(prev => ({
           ...prev,
           fd: latest.fd,
@@ -75,7 +75,6 @@ export default function PredictTab() {
     setCopied(false);
     setLogged(false);
 
-    // Simulate loading for better UX
     setTimeout(() => {
       const pastResults = getAllResultsSorted();
       const pastMurda: string[] = [];
@@ -111,11 +110,6 @@ export default function PredictTab() {
         if (r.ds) currentMonthNums.push(r.ds);
       });
 
-      // ==========================================
-      // [NEW] PYTHON SYSTEM DATA EXTRACTION
-      // ==========================================
-
-      // 1. recent7DaysNums (Top Haruf nikalne ke liye)
       const recent7DaysNums: string[] = [];
       const past7Days = pastResults
         .filter(r => new Date(r.date) < new Date(inputs.date))
@@ -128,9 +122,6 @@ export default function PredictTab() {
         if (r.ds) recent7DaysNums.push(r.ds);
       });
 
-      // 2. historyBlocks (Operator Scanner ke Gap/Daane logic ke liye)
-      // Note: gap 11 din pichhe tak jaata hai, isliye 15 din ka data bhej rahe hain.
-      // .reverse() lagaya hai taki data oldest se newest order me jaaye (jaise Python me tha).
       const historyBlocks: string[][] = [];
       const past15Days = pastResults
         .filter(r => new Date(r.date) < new Date(inputs.date))
@@ -145,15 +136,12 @@ export default function PredictTab() {
         if (r.ds) dayNums.push(r.ds);
         if (dayNums.length > 0) historyBlocks.push(dayNums);
       });
-      // ==========================================
 
       const todaysRes: string[] = [];
       const userInputs = [inputs.ds, inputs.gl, inputs.gb, inputs.fd].filter(v => v !== '');
       todaysRes.push(...userInputs);
 
-      // If less than 4, fill from pastResults history
       if (todaysRes.length < 4) {
-        // Collect all history numbers in reverse order (latest first)
         const allPastNums: string[] = [];
         pastResults.forEach(r => {
           if (r.ds) allPastNums.push(r.ds);
@@ -167,7 +155,6 @@ export default function PredictTab() {
         }
       }
 
-      // [UPDATED] calculationPrediction call with new Python parameters
       const res = calculatePrediction(
         inputs, 
         selectedFormulas, 
@@ -175,9 +162,9 @@ export default function PredictTab() {
         currentMonthNums, 
         todaysRes.slice(0, 4), 
         past4DaysMurda,
-        recent7DaysNums, // Naya: Haruf Bonus
-        historyBlocks,   // Naya: Operator Traps
-        true             // Naya: useHarufBonus flag (Hamesha On)
+        recent7DaysNums, 
+        historyBlocks,   
+        true             
       );
       
       setResult(res);
@@ -189,23 +176,28 @@ export default function PredictTab() {
   const currentRate = ledger.currentRates[selectedGame];
   const totalAmount = allJodis.length * currentRate;
 
+  // Slip Text Generator
+  const generateSlipText = () => {
+    return `📅 Date: ${inputs.date}\n🎯 Game: ${selectedGame}\n🎲 Jodis (${allJodis.length}):\n${allJodis.join(', ')}\n\n💰 Rate: ${currentRate} Into\n💵 Total: ₹${totalAmount}`;
+  };
+
   const copyToClipboard = () => {
-    const text = `📅 Date: ${inputs.date}
-🎯 Game: ${selectedGame}
-🎲 Jodis (${allJodis.length}):
-${allJodis.join(', ')}
-
-💰 Rate: ${currentRate} Into
-💵 Total: ₹${totalAmount}`;
-
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(generateSlipText());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // [NEW] WhatsApp Share Function
+  const shareToWhatsApp = () => {
+    const text = generateSlipText();
+    const encodedText = encodeURIComponent(text);
+    // wa.me link directly opens WhatsApp on phone/web securely
+    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+  };
+
   const handleLogToTracker = () => {
     saveTrackerEntry({
-      id: inputs.date, // Use date as ID to avoid duplicates on same day
+      id: inputs.date, 
       date: inputs.date,
       isPlay: true,
       passLocation: 'PENDING'
@@ -350,13 +342,24 @@ ${allJodis.join(', ')}
               </div>
 
               <div className="flex flex-col gap-3 pt-2">
-                <button 
-                  onClick={copyToClipboard}
-                  className="w-full bg-[#1F2937] hover:bg-[#374151] border border-slate-700 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
-                >
-                  {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
-                  {copied ? 'कॉपी हो गया!' : 'खाईवाल के लिए कॉपी करें'}
-                </button>
+                {/* Copy and WhatsApp Buttons Side by Side */}
+                <div className="flex gap-2">
+                  <button 
+                    onClick={copyToClipboard}
+                    className="flex-1 bg-[#1F2937] hover:bg-[#374151] border border-slate-700 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                  >
+                    {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
+                    {copied ? 'कॉपी हो गया' : 'कॉपी करें'}
+                  </button>
+
+                  <button 
+                    onClick={shareToWhatsApp}
+                    className="flex-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-500 font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Send className="w-5 h-5" />
+                    WhatsApp
+                  </button>
+                </div>
 
                 <button 
                   onClick={handleLogToTracker}

@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
 import { Lock } from 'lucide-react';
+import { triggerSuccessFeedback } from '../utils/feedback'; // नया साउंड सिस्टम जोड़ा
 
 export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
   const [input, setInput] = useState('');
 
   const handleCheck = (val: string) => {
     setInput(val);
-    // 1234 आपका नॉर्मल पिन है, Kuldeep0814 आपका मास्टर पिन
-    if (val === '1234' || val === 'Kuldeep0814') {
-      onUnlock();
+    // 0814 आपका मेन पिन है, और Kuldeep0814 आपका मास्टर पासवर्ड है
+    if (val === '0814' || val === 'Kuldeep0814') {
+      triggerSuccessFeedback(); // पिन सही होते ही टिंग की आवाज़ और वाइब्रेशन!
+      
+      // थोड़ा सा डिले (delay) ताकि आवाज़ पूरी आ सके फिर ऐप खुले
+      setTimeout(() => {
+        onUnlock();
+      }, 200);
     }
   };
 
@@ -17,7 +23,7 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
       <div className="bg-[#111827] border border-slate-700 p-8 rounded-3xl text-center shadow-2xl w-full max-w-sm">
         <Lock className="w-16 h-16 text-teal-400 mx-auto mb-6" />
         <h2 className="text-2xl font-bold mb-2">App Locked</h2>
-        <p className="text-slate-400 mb-8">सुरक्षा के लिए पिन दर्ज करें</p>
+        <p className="text-slate-400 mb-8">सुरक्षा के लिए 4-डिजिट पिन दर्ज करें</p>
         
         <input 
           type="password"
@@ -27,6 +33,7 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
           placeholder="Enter PIN"
           className="w-full bg-[#0B1120] border border-slate-700 rounded-xl px-4 py-4 text-center text-2xl font-mono text-teal-400 focus:outline-none focus:border-teal-400"
         />
+        <p className="mt-4 text-[10px] text-slate-600">PIN: 0814 | Master: Kuldeep0814</p>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Settings, Play, Beaker, CheckCircle2 } from 'lucide-react';
+import { Settings, Play, ShieldAlert, Sparkles, AlertTriangle, ChevronDown, Check, Crosshair } from 'lucide-react';
 import { PredictionInput, PredictionResult } from '../types';
 import { calculatePrediction } from '../utils/formulas';
 
@@ -9,245 +9,282 @@ export default function PredictTab() {
     fd: '',
     gb: '',
     gl: '',
-    ds: ''
+    ds: '',
+    budget: '',
+    targetMarket: 'FD'
   });
 
-  const [useAdvanced, setUseAdvanced] = useState(false);
-  const [isCalculating, setIsCalculating] = useState(false);
   const [result, setResult] = useState<PredictionResult | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [useAdvanced, setUseAdvanced] = useState(false);
+  const [selectedFormulas, setSelectedFormulas] = useState<string[]>([
+    'master', 'family', 'murda', 'magic', 'joda'
+  ]);
+  const [showFormulas, setShowFormulas] = useState(false);
 
-  const handleCalculate = () => {
+  const formulas = [
+    { id: 'master', name: 'Master Sheet (100%)', type: 'base' },
+    { id: 'family', name: 'Family Scanner', type: 'core' },
+    { id: 'murda', name: 'Murda Gap Trap', type: 'core' },
+    { id: 'magic', name: 'Magic 4 Jodi', type: 'special' },
+    { id: 'joda', name: 'Cut Joda/Murda', type: 'filter' },
+    { id: 'haruf', name: 'Haruf Bonus (+5)', type: 'bonus' },
+    { id: 'month', name: 'Cross-Month P.', type: 'advanced' },
+    { id: 'operator', name: 'Operator Trap', type: 'advanced' },
+  ];
+
+  const toggleFormula = (id: string) => {
+    setSelectedFormulas(prev => 
+      prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
+    );
+  };
+
+  const handlePredict = () => {
     setIsCalculating(true);
-    // Simulate calculation delay for effect
+    setResult(null);
+    
+    // Simulate complex calculation delay
     setTimeout(() => {
-      // In a real app, we would fetch history blocks here based on inputs
-      const historyBlocks: string[][] = [
-        ['12', '34', '56', '78'], // Mock history for testing
-        ['90', '12', '34', '56']
-      ];
+      const historyBlocks: string[][] = []; // In a real app, this would be actual history
       
       const prediction = calculatePrediction(
         inputs,
-        [], // Formulas selected
-        [inputs.fd, inputs.gb, inputs.gl, inputs.ds], // Today's results
-        ['11', '22', '33'], // Past murda 
-        ['45', '67'], // Current month nums
+        selectedFormulas,
+        [inputs.fd, inputs.gb, inputs.gl, inputs.ds],
+        [], // past murda
+        [], // current month nums
         historyBlocks,
         useAdvanced
       );
       
       setResult(prediction);
       setIsCalculating(false);
-    }, 800);
+    }, 1500);
   };
 
+  const isFormValid = inputs.date && inputs.targetMarket && 
+                      (inputs.fd || inputs.gb || inputs.gl || inputs.ds);
+
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-20 animate-fade-in">
       {/* Header */}
-      <div className="bg-[#13151E] p-5 border-b border-slate-800/60 sticky top-0 z-10 shadow-lg shadow-black/20">
-        <h1 className="text-xl font-bold text-white flex items-center gap-2">
-          <div className="w-8 h-8 bg-teal-400/10 rounded-lg flex items-center justify-center">
-            <Beaker className="w-5 h-5 text-teal-400" />
-          </div>
-          Prediction Engine
-        </h1>
-        <p className="text-sm text-slate-400 mt-1">Advanced algorithm for L1, L2, L3 generation</p>
-      </div>
-
-      <div className="px-4 space-y-6">
-        {/* Date Selection */}
-        <div className="bg-[#1C1F2D] p-5 rounded-2xl border border-slate-800 shadow-sm">
-          <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-teal-400" />
-            Prediction Date
-          </label>
-          <input
-            type="date"
-            value={inputs.date}
-            onChange={(e) => setInputs({ ...inputs, date: e.target.value })}
-            className="w-full bg-[#13151E] border border-slate-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-teal-400/50 focus:border-teal-400 transition-all"
-          />
-        </div>
-
-        {/* Input Results */}
-        <div className="bg-[#1C1F2D] p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
-          <h3 className="text-sm font-medium text-slate-300 border-b border-slate-800 pb-2">Previous Day Results</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 tracking-wider">FD RESULT</label>
-              <input
-                type="number"
-                value={inputs.fd}
-                onChange={(e) => setInputs({ ...inputs, fd: e.target.value })}
-                placeholder="00"
-                className="w-full bg-[#13151E] border border-slate-700 rounded-xl p-3 text-center text-xl font-bold text-white focus:ring-2 focus:ring-teal-400/50 focus:border-teal-400 transition-all placeholder:text-slate-600 font-mono"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 tracking-wider">GB RESULT</label>
-              <input
-                type="number"
-                value={inputs.gb}
-                onChange={(e) => setInputs({ ...inputs, gb: e.target.value })}
-                placeholder="00"
-                className="w-full bg-[#13151E] border border-slate-700 rounded-xl p-3 text-center text-xl font-bold text-white focus:ring-2 focus:ring-teal-400/50 focus:border-teal-400 transition-all placeholder:text-slate-600 font-mono"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 tracking-wider">GL RESULT</label>
-              <input
-                type="number"
-                value={inputs.gl}
-                onChange={(e) => setInputs({ ...inputs, gl: e.target.value })}
-                placeholder="00"
-                className="w-full bg-[#13151E] border border-slate-700 rounded-xl p-3 text-center text-xl font-bold text-white focus:ring-2 focus:ring-teal-400/50 focus:border-teal-400 transition-all placeholder:text-slate-600 font-mono"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 tracking-wider">DS RESULT</label>
-              <input
-                type="number"
-                value={inputs.ds}
-                onChange={(e) => setInputs({ ...inputs, ds: e.target.value })}
-                placeholder="00"
-                className="w-full bg-[#13151E] border border-slate-700 rounded-xl p-3 text-center text-xl font-bold text-white focus:ring-2 focus:ring-teal-400/50 focus:border-teal-400 transition-all placeholder:text-slate-600 font-mono"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Engine Settings */}
-        <div className="bg-[#1C1F2D] p-5 rounded-2xl border border-slate-800 shadow-sm flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-medium text-white flex items-center gap-2">
-              <Settings className="w-4 h-4 text-slate-400" />
-              Advanced Scan
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">Include deep historical patterns</p>
-          </div>
-          <button
-            onClick={() => setUseAdvanced(!useAdvanced)}
-            className={`w-12 h-6 rounded-full transition-colors relative ${useAdvanced ? 'bg-teal-400' : 'bg-slate-700'}`}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-teal-400" />
+          AI प्रेडिक्शन इंजन
+        </h2>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setShowFormulas(!showFormulas)}
+            className={`p-2 rounded-xl border transition-all ${
+              showFormulas 
+                ? 'bg-teal-400/20 border-teal-400/50 text-teal-400' 
+                : 'bg-[#1C1F2D] border-slate-700 text-slate-400 hover:text-white'
+            }`}
           >
-            <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${useAdvanced ? 'translate-x-7' : 'translate-x-1'}`} />
+            <Settings className="w-5 h-5" />
           </button>
         </div>
+      </div>
 
-        {/* Action Button */}
-        <button
-          onClick={handleCalculate}
-          disabled={isCalculating}
-          className="w-full bg-gradient-to-r from-teal-400 to-emerald-500 hover:from-teal-300 hover:to-emerald-400 text-slate-900 font-bold py-4 rounded-2xl shadow-lg shadow-teal-500/20 flex items-center justify-center space-x-2 transition-all active:scale-[0.98] disabled:opacity-70"
-        >
-          {isCalculating ? (
-            <div className="w-6 h-6 border-3 border-slate-900 border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <>
-              <Play className="w-5 h-5 fill-current" />
-              <span className="text-lg">Generate Output</span>
-            </>
-          )}
-        </button>
+      {/* Inputs Section */}
+      <div className="bg-[#1C1F2D] p-5 rounded-2xl border border-slate-800 space-y-5 shadow-lg relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl -ml-10 -mb-10 pointer-events-none"></div>
 
-        {/* Results Area */}
-        {result && (
-          <div className="space-y-6 mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            
-            {/* Tokari Counts */}
-            <div className="bg-[#1C1F2D] border border-slate-800 rounded-2xl p-5 shadow-lg">
-              <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center">
-                  <span className="text-purple-400 text-xs">📊</span>
+        <div className="grid grid-cols-2 gap-4 relative z-10">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-400 ml-1">तारीख (Date)</label>
+            <input
+              type="date"
+              value={inputs.date}
+              onChange={(e) => setInputs({ ...inputs, date: e.target.value })}
+              className="w-full bg-[#13151E] border border-slate-700 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-400 ml-1">मार्केट (Target)</label>
+            <select
+              value={inputs.targetMarket}
+              onChange={(e) => setInputs({ ...inputs, targetMarket: e.target.value })}
+              className="w-full bg-[#13151E] border border-slate-700 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all appearance-none"
+            >
+              <option value="FD">Faridabad (FD)</option>
+              <option value="GB">Ghaziabad (GB)</option>
+              <option value="GL">Gali (GL)</option>
+              <option value="DS">Desawar (DS)</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-3 relative z-10">
+          <label className="text-xs font-medium text-slate-400 ml-1 flex items-center justify-between">
+            <span>पुराने रिजल्ट्स (पिछला दिन / लाइव)</span>
+            <span className="text-[10px] text-teal-400/80 bg-teal-400/10 px-2 py-0.5 rounded-full">कम से कम 1 डालें</span>
+          </label>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { id: 'fd', label: 'FD' },
+              { id: 'gb', label: 'GB' },
+              { id: 'gl', label: 'GL' },
+              { id: 'ds', label: 'DS' }
+            ].map((mkt) => (
+              <div key={mkt.id} className="relative group">
+                <input
+                  type="number"
+                  placeholder={mkt.label}
+                  value={inputs[mkt.id as keyof PredictionInput]}
+                  onChange={(e) => setInputs({ ...inputs, [mkt.id]: e.target.value })}
+                  className="w-full bg-[#13151E] border border-slate-700 rounded-xl px-2 py-3 text-center text-white font-mono focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all text-sm placeholder-slate-600"
+                />
+                {inputs[mkt.id as keyof PredictionInput] && (
+                  <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-teal-400 rounded-full border-2 border-[#1C1F2D]"></div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Formulas Panel */}
+      {showFormulas && (
+        <div className="bg-[#1C1F2D] p-5 rounded-2xl border border-slate-800 shadow-lg animate-slide-up">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <Crosshair className="w-4 h-4 text-teal-400" />
+              एक्टिव फॉर्मूले
+            </h3>
+            <span className="text-xs text-slate-400 bg-[#13151E] px-2 py-1 rounded-lg border border-slate-800">
+              {selectedFormulas.length} Selected
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3">
+            {formulas.map(f => {
+              const isSelected = selectedFormulas.includes(f.id);
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => toggleFormula(f.id)}
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all ${
+                    isSelected 
+                      ? 'bg-teal-400/10 border-teal-400/30 text-white' 
+                      : 'bg-[#13151E] border-slate-800 text-slate-400 hover:border-slate-600'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${
+                    isSelected ? 'bg-teal-400 text-slate-900' : 'bg-slate-800 border border-slate-700'
+                  }`}>
+                    {isSelected && <Check className="w-3 h-3" />}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-medium leading-none">{f.name}</span>
+                    <span className="text-[9px] text-slate-500 mt-1 uppercase tracking-wider">{f.type}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Predict Button */}
+      <button
+        onClick={handlePredict}
+        disabled={!isFormValid || isCalculating}
+        className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg ${
+          !isFormValid 
+            ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700' 
+            : isCalculating
+              ? 'bg-teal-400/80 text-slate-900 cursor-wait'
+              : 'bg-teal-400 hover:bg-teal-300 text-slate-900 active:scale-[0.98]'
+        }`}
+      >
+        {isCalculating ? (
+          <>
+            <div className="w-5 h-5 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin"></div>
+            सिस्टम कैलकुलेट कर रहा है...
+          </>
+        ) : (
+          <>
+            <Play className="w-5 h-5" fill="currentColor" />
+            प्रेडिक्शन रन करें (30 जोड़ी)
+          </>
+        )}
+      </button>
+
+      {/* Results Section */}
+      {result && !isCalculating && (
+        <div className="space-y-4 animate-slide-up mt-8">
+          
+          {/* L1 - VIP */}
+          <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/5 p-5 rounded-2xl border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.1)] relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-2 opacity-10">
+              <Sparkles className="w-24 h-24 text-amber-500" />
+            </div>
+            <h3 className="text-amber-400 font-bold mb-4 flex items-center gap-2 relative z-10">
+              L1 - सुपर VIP (4 जोड़ी)
+            </h3>
+            <div className="grid grid-cols-4 gap-3 relative z-10">
+              {result.l1.map((num, i) => (
+                <div key={i} className="bg-[#1C1F2D] border border-amber-500/40 text-white font-mono text-lg font-bold text-center py-3 rounded-xl shadow-inner">
+                  {num}
                 </div>
-                टोकरी काउंट्स (Base Points)
-              </h3>
-              {result.tokari && result.tokari.length > 0 ? (
-                <div className="flex flex-wrap gap-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                  {result.tokari.map((t, idx) => (
-                    <div key={idx} className="bg-[#13151E] border border-slate-800 rounded-xl p-3 min-w-[70px] flex flex-col items-center justify-center relative overflow-hidden group">
-                      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <span className="text-xl font-bold text-white font-mono relative z-10">{t.id}</span>
-                      <span className="text-xs text-purple-400 font-medium relative z-10 mt-1 bg-purple-500/10 px-2 py-0.5 rounded-full">
-                        {t.count}x
-                      </span>
-                    </div>
-                  ))}
+              ))}
+            </div>
+          </div>
+
+          {/* L2 - Main */}
+          <div className="bg-[#1C1F2D] p-5 rounded-2xl border border-blue-500/30 shadow-lg relative overflow-hidden">
+             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+            <h3 className="text-blue-400 font-bold mb-4 flex items-center gap-2">
+              L2 - मेन (10 जोड़ी)
+            </h3>
+            <div className="grid grid-cols-5 gap-2 relative z-10">
+              {result.l2.map((num, i) => (
+                <div key={i} className="bg-[#13151E] border border-slate-700 text-slate-300 font-mono text-center py-2.5 rounded-xl text-sm">
+                  {num}
                 </div>
-              ) : (
-                <div className="text-center py-6 text-slate-500 text-sm">
-                  कोई टोकरी डेटा नहीं
+              ))}
+            </div>
+          </div>
+
+          {/* L3 - Support */}
+          <div className="bg-[#1C1F2D] p-5 rounded-2xl border border-teal-500/20 shadow-lg relative overflow-hidden">
+             <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+            <h3 className="text-teal-400 font-bold mb-4 flex items-center gap-2">
+              L3 - सपोर्ट (16 जोड़ी)
+            </h3>
+            <div className="grid grid-cols-5 gap-2 relative z-10">
+              {result.l3.map((num, i) => (
+                <div key={i} className="bg-[#13151E] border border-slate-800 text-slate-400 font-mono text-center py-2 rounded-lg text-sm">
+                  {num}
                 </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Tokari Counts (As requested) */}
+          <div className="bg-[#1C1F2D] p-5 rounded-2xl border border-slate-800 shadow-lg mt-6">
+            <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+              टोकरी काउंट्स
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              {result.tokari.map((t, i) => (
+                <div key={i} className="bg-[#13151E] flex flex-col items-center justify-center border border-slate-700 py-2 px-4 rounded-xl min-w-[60px]">
+                  <span className="text-white font-mono text-base">{t.id}</span>
+                  <span className="text-slate-500 text-[10px] font-bold tracking-wider">{t.count}x</span>
+                </div>
+              ))}
+              {result.tokari.length === 0 && (
+                <p className="text-slate-500 text-sm">कोई टोकरी डेटा नहीं मिला।</p>
               )}
             </div>
-
-            <div className="bg-[#1C1F2D] border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-              <div className="bg-gradient-to-r from-red-500/20 to-transparent p-4 border-b border-red-500/20">
-                <h3 className="text-red-400 font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" />
-                  L1 - सुपर VIP (4 जोड़ी)
-                </h3>
-              </div>
-              <div className="p-5">
-                <div className="grid grid-cols-4 gap-3">
-                  {result.l1.map((num, i) => (
-                    <div key={i} className="aspect-square bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-red-500/20 font-mono">
-                      {num}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-[#1C1F2D] border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-              <div className="bg-gradient-to-r from-blue-500/20 to-transparent p-4 border-b border-blue-500/20">
-                <h3 className="text-blue-400 font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" />
-                  L2 - मेन (10 जोड़ी)
-                </h3>
-              </div>
-              <div className="p-5">
-                <div className="grid grid-cols-5 gap-3">
-                  {result.l2.map((num, i) => (
-                    <div key={i} className="aspect-square bg-[#13151E] border border-blue-500/30 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-inner font-mono">
-                      {num}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-[#1C1F2D] border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-              <div className="bg-gradient-to-r from-teal-500/10 to-transparent p-4 border-b border-teal-500/10">
-                <h3 className="text-teal-400 font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" />
-                  L3 - सपोर्ट (16 जोड़ी)
-                </h3>
-              </div>
-              <div className="p-5">
-                <div className="grid grid-cols-5 gap-2">
-                  {result.l3.map((num, i) => (
-                    <div key={i} className="aspect-square bg-[#13151E] border border-slate-800 rounded-lg flex items-center justify-center text-slate-300 text-lg font-medium font-mono hover:border-teal-500/30 transition-colors">
-                      {num}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => {
-                const text = `Sahil Bhai Prediction\n\nL1 (Super VIP): ${result.l1.join(', ')}\nL2 (Main): ${result.l2.join(', ')}\nL3 (Support): ${result.l3.join(', ')}`;
-                navigator.clipboard.writeText(text);
-                alert('Copied to clipboard!');
-              }}
-              className="w-full py-3 bg-[#13151E] border border-slate-700 rounded-xl text-slate-300 font-medium hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-              Copy Slip
-            </button>
           </div>
-        )}
-      </div>
+
+        </div>
+      )}
     </div>
   );
 }

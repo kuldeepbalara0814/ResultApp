@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Target, Wallet, Landmark, TrendingUp, Edit2, Trash2, Settings, BarChart2, Activity, Download } from 'lucide-react';
+import { Target, Wallet, Landmark, TrendingUp, Edit2, Trash2, Settings, BarChart2, Activity, Download, X } from 'lucide-react';
 import { TrackerEntry, PassLocation } from '../types';
 import { getTrackerEntries, saveTrackerEntry, deleteTrackerEntry, setInitialCapital } from '../utils/storage';
 import { calculateLedger } from '../utils/ledger';
@@ -7,6 +7,8 @@ import { calculateLedger } from '../utils/ledger';
 export default function TrackerTab() {
   const [entries, setEntries] = useState<TrackerEntry[]>(getTrackerEntries());
   const [showSettings, setShowSettings] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportDates, setExportDates] = useState({ start: '', end: '' });
   const [capitalInput, setCapitalInput] = useState('15000');
   
   const [formData, setFormData] = useState<{
@@ -77,12 +79,27 @@ export default function TrackerTab() {
   };
 
   // ==========================================
-  // [NEW] Excel / CSV Export Logic
+  // [UPDATED] Custom Date CSV Export Logic
   // ==========================================
   const handleExportCSV = () => {
     const headers = ['Date', 'Play Status', 'Location', 'Investment(Rs)', 'Return(Rs)', 'Net Profit(Rs)', 'Total Cash', 'Safe Bank'];
     
-    const rows = ledger.history.map(record => {
+    let filteredHistory = ledger.history;
+
+    // Filter by Date Logic
+    if (exportDates.start) {
+      filteredHistory = filteredHistory.filter(r => r.date >= exportDates.start);
+    }
+    if (exportDates.end) {
+      filteredHistory = filteredHistory.filter(r => r.date <= exportDates.end);
+    }
+
+    if (filteredHistory.length === 0) {
+      alert('इन तारीखों के बीच कोई डेटा नहीं मिला!');
+      return;
+    }
+
+    const rows = filteredHistory.map(record => {
       const status = record.isPlay ? 'Played' : 'No Play';
       const loc = record.passLocation || '-';
       return [
@@ -101,8 +118,12 @@ export default function TrackerTab() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `App_Report_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `Report_${exportDates.start || 'Start'}_to_${exportDates.end || 'End'}.csv`;
     link.click();
+    
+    // Modal बंद करें और डेट रीसेट करें
+    setShowExportModal(false);
+    setExportDates({ start: '', end: '' });
   };
 
   const currentPocket = Math.min(ledger.finalCash, ledger.currentDailyLimit);
@@ -111,14 +132,14 @@ export default function TrackerTab() {
   const maxProfitAbs = Math.max(...recentHistory.map(r => Math.abs(r.netProfit || 0)), 1);
 
   return (
-    <div className="p-4 space-y-6 pb-24 font-sans">
+    <div className="p-4 space-y-6 pb-24 font-sans relative">
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-xl font-bold text-teal-400 flex items-center gap-2">
           <Target className="w-6 h-6" /> Risk Management
         </h1>
         <div className="flex items-center gap-2">
-          {/* Export Button Added Here */}
-          <button onClick={handleExportCSV} className="p-2 text-teal-400 hover:text-teal-300 bg-teal-400/10 rounded-full transition-colors" title="Download Report">
+          {/* Download Button triggers Modal now */}
+          <button onClick={() => setShowExportModal(true)} className="p-2 text-teal-400 hover:text-teal-300 bg-teal-400/10 rounded-full transition-colors" title="Custom Data Download">
             <Download className="w-5 h-5" />
           </button>
           <button onClick={() => setShowSettings(!showSettings)} className="p-2 text-slate-400 hover:text-white">
@@ -126,6 +147,48 @@ export default function TrackerTab() {
           </button>
         </div>
       </div>
+
+      {/* Export Date Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#111827] border border-slate-700 p-6 rounded-2xl w-full max-w-sm shadow-2xl relative">
+            <button onClick={() => setShowExportModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
+              <Download className="w-5 h-5 text-teal-400" /> Export Ledger
+            </h3>
+            <p className="text-xs text-slate-400 mb-5">कस्टम तारीख चुनें या खाली छोड़कर पूरा डेटा डाउनलोड करें</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-slate-300 mb-1 block">From Date (कब से)</label>
+                <input 
+                  type="date" 
+                  value={exportDates.start} 
+                  onChange={e => setExportDates({...exportDates, start: e.target.value})} 
+                  className="w-full bg-[#0B1120] border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-teal-400 focus:outline-none" 
+                />
+              </div>
+              <div>
+                <label className="text-sm text-slate-300 mb-1 block">To Date (कब तक)</label>
+                <input 
+                  type="date" 
+                  value={exportDates.end} 
+                  onChange={e => setExportDates({...exportDates, end: e.target.value})} 
+                  className="w-full bg-[#0B1120] border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-teal-400 focus:outline-none" 
+                />
+              </div>
+              <button 
+                onClick={handleExportCSV} 
+                className="w-full bg-teal-400 hover:bg-teal-300 text-slate-900 font-bold py-3 rounded-xl mt-2 transition-colors"
+              >
+                Download CSV
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showSettings && (
         <div className="bg-[#111827] border border-slate-700 rounded-2xl p-4 animate-in slide-in-from-top-2">

@@ -4,79 +4,118 @@ export function calculateLedger() {
   const entries = getTrackerEntries();
   const sortedEntries = [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   
+  // Excel Sheet Constants
   const TOTAL_CAPITAL = 15000;
-  const EMERGENCY_FUND = 12900;
-  const DAILY_PLAY_COST = 2100;
-  
-  // रेट्स जो PredictTab.tsx को चाहिए
-  const currentRates = { FD: 10, GB: 15, GL: 20, DS: 25 };
+  const INITIAL_EMERGENCY = 12900;
+  const INITIAL_POCKET = 2100;
+  const WIN_MULTIPLIER = 90; // शीट के नियम "भाव x 90" के अनुसार 
 
-  let currentCash = TOTAL_CAPITAL; 
-  let currentBank = 0; 
+  let currentPocket = INITIAL_POCKET;    // नया खेलने का पैसा
+  let currentSafeFund = INITIAL_EMERGENCY; // नया इमरजेंसी फंड
+  let bankAccum = 0;                     // बैंक में जमा (50% मुनाफे का)
   
   const history = [];
 
-  for (const entry of sortedEntries) {
+  // Default rates for empty states
+  let currentRates = { FD: 10, GB: 15, GL: 20, DS: 25 };
+  let currentDailyLimit = INITIAL_POCKET;
+
+  for (let i = 0; i < sortedEntries.length; i++) {
+    const entry = sortedEntries[i];
+    
+    // आज का कुल फंड (Excel Col 15: कुल फंड)
+    const currentTotalCash = currentPocket + currentSafeFund + bankAccum;
+    
+    // डायनामिक रेट मल्टीप्लायर (Excel: MAX(1, INT(Total/15000)))
+    const multiplier = Math.max(1, Math.floor(currentTotalCash / 15000));
+    
+    currentRates = { 
+      FD: 10 * multiplier, 
+      GB: 15 * multiplier, 
+      GL: 20 * multiplier, 
+      DS: 25 * multiplier 
+    };
+    
+    // आज की कुल लिमिट (Max Risk)
+    currentDailyLimit = (currentRates.FD + currentRates.GB + currentRates.GL + currentRates.DS) * 30;
+
     if (!entry.isPlay || entry.passLocation === 'PENDING') {
       history.push({
         ...entry,
         cost: 0,
         grossReturn: 0,
         netProfit: 0,
-        runningCash: currentCash,
-        runningBank: currentBank
+        runningCash: Math.round(currentTotalCash), 
+        runningBank: Math.round(currentSafeFund + bankAccum)
       });
       continue;
     }
 
-    const cost = DAILY_PLAY_COST;
-    let grossReturn = 0;
+    // असली खर्च (Cost x 30): जहां पास हुआ, वहीं तक का खर्च लगेगा (Excel Col 10)
+    let cost = 0;
+    if (entry.passLocation === 'FD') cost = currentRates.FD * 30;
+    else if (entry.passLocation === 'GB') cost = (currentRates.FD + currentRates.GB) * 30;
+    else if (entry.passLocation === 'GL') cost = (currentRates.FD + currentRates.GB + currentRates.GL) * 30;
+    else if (entry.passLocation === 'DS') cost = currentDailyLimit;
+    else cost = currentDailyLimit; // FAIL (पूरा खर्च लगेगा)
 
-    // रिजल्ट पास होने पर 95 के रेट से कैलकुलेशन
-    if (entry.passLocation !== 'FAIL') {
-      if (entry.passLocation === 'FD') grossReturn = currentRates.FD * 95;
-      if (entry.passLocation === 'GB') grossReturn = currentRates.GB * 95;
-      if (entry.passLocation === 'GL') grossReturn = currentRates.GL * 95;
-      if (entry.passLocation === 'DS') grossReturn = currentRates.DS * 95;
+    // कुल वापसी (Auto Win ₹) (Excel Col 4)
+    let grossReturn = 0;
+    if (entry.passLocation !== 'FAIL' && entry.passLocation !== 'PENDING') {
+      if (entry.passLocation === 'FD') grossReturn = currentRates.FD * WIN_MULTIPLIER;
+      if (entry.passLocation === 'GB') grossReturn = currentRates.GB * WIN_MULTIPLIER;
+      if (entry.passLocation === 'GL') grossReturn = currentRates.GL * WIN_MULTIPLIER;
+      if (entry.passLocation === 'DS') grossReturn = currentRates.DS * WIN_MULTIPLIER;
     }
     
+    // शुद्ध मुनाफा (Net PnL) (Excel Col 11)
     const netProfit = grossReturn - cost;
     
-    // 50-50 कंपाउंडिंग लॉजिक
-    if (netProfit > 0) {
-      const bankShare = Math.floor(netProfit / 2);
-      const cashShare = netProfit - bankShare;
-      currentBank += bankShare;
-      currentCash += cashShare;
-    } else {
-      currentCash += netProfit; 
+    // बैंक में जमा 50% (Excel Col 12)
+    const bankShare = netProfit > 0 ? Math.floor(netProfit * 0.5) : 0;
+    bankAccum += bankShare;
+
+    // नया खेलने का पैसा (Temp Pocket calculation before shortfall)
+    const tempPocket = currentPocket + (netProfit > 0 ? (netProfit - bankShare) : netProfit);
+
+    // शॉर्टफॉल चेक: अगर पॉकेट में लिमिट से कम पैसा है, तो सेफ फंड से निकालेंगे (Excel Col 13 & 14)
+    let shortfall = 0;
+    if (tempPocket < currentDailyLimit) {
+      shortfall = currentDailyLimit - tempPocket;
     }
+
+    // फाइनल अपडेट
+    currentPocket = tempPocket + shortfall;
+    currentSafeFund = currentSafeFund - shortfall;
+    
+    const finalTotalForDay = currentPocket + currentSafeFund + bankAccum;
 
     history.push({
       ...entry,
       cost,
       grossReturn,
       netProfit,
-      runningCash: Math.round(currentCash),
-      runningBank: Math.round(currentBank)
+      runningCash: Math.round(finalTotalForDay), 
+      runningBank: Math.round(currentSafeFund + bankAccum)
     });
   }
 
-  // PredictTab और Tracker दोनों के लिए रिटर्न वैल्यू
+  const finalTotalCash = currentPocket + currentSafeFund + bankAccum;
+
   return {
     history: history.reverse(),
-    finalCash: Math.round(currentCash),
-    finalBank: Math.round(currentBank),
-    currentDailyLimit: DAILY_PLAY_COST,
-    emergencyFund: EMERGENCY_FUND,
+    finalCash: Math.round(finalTotalCash), 
+    finalBank: Math.round(currentSafeFund + bankAccum), 
+    currentDailyLimit: currentDailyLimit,
+    emergencyFund: Math.round(currentSafeFund + bankAccum),
     initialCapital: TOTAL_CAPITAL,
     
-    // PredictTab के लिए ज़रूरी डेटा
     currentRates: currentRates,
-    totalDayBet: DAILY_PLAY_COST,
+    totalDayBet: currentDailyLimit,
     wallet: {
-      compound: Math.round(currentCash),
-      emergency: EMERGENCY_FUND
+      compound: Math.round(finalTotalCash),
+      emergency: Math.round(currentSafeFund + bankAccum),
+      pocket: Math.round(currentPocket) // नया: जेब का पैसा भी रिटर्न में डाल दिया है
     }
   };
 }

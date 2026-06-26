@@ -165,9 +165,11 @@ export const calculatePrediction = (
 
   const LOGIC_3_JORIS = ['30', '03', '41', '14', '74', '47', '85', '58', '96', '69'];
 
-  Object.keys(counts).forEach(jodi => {
-    let score = counts[jodi];
-    let details = [`Base(${counts[jodi]})`];
+  // ====== 100% GARANTEE LOOP: Evaluate all 100 Jodis ======
+  for (let i = 1; i <= 100; i++) {
+    const jodi = i === 100 ? '00' : i.toString().padStart(2, '0');
+    let score = counts[jodi] || 0;
+    let details = [`Base(${score})`];
 
     if (selectedFormulas.includes('6')) {
       if (pastMurda.includes(jodi)) { score += 10; details.push("Murda(+10)"); }
@@ -205,7 +207,7 @@ export const calculatePrediction = (
 
     jodiScores[jodi] = score;
     scoreBreakdown[jodi] = details;
-  });
+  }
 
   const filteredJodis: Record<string, number> = jodiScores;
 

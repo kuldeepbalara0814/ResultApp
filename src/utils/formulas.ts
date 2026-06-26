@@ -209,7 +209,6 @@ export const calculatePrediction = (
 
   const filteredJodis: Record<string, number> = jodiScores;
 
-
   const sortedJodis = Object.keys(filteredJodis).sort((a, b) => filteredJodis[b] - filteredJodis[a]);
   const final30 = sortedJodis.slice(0, 30);
 

@@ -3,6 +3,7 @@ import { PredictionInput, PredictionResult, TokariItem } from '../types';
 const EVERGREEN = ['3', '8', '6', '1', '9', '0', '7', '2'];
 const UNIVERSAL = ['02', '20', '04', '40', '06', '60', '24', '42', '28', '82', '46', '64', '68', '86'];
 const MAGIC = ['12', '23', '84', '96'];
+// JODAS array rakha hai future reference ke liye, but iska filter hata diya gaya hai.
 const JODAS = ['00', '11', '22', '33', '44', '55', '66', '77', '88', '99']; 
 
 const DAY_WISE_FIXED: Record<number, string[]> = {
@@ -137,7 +138,7 @@ export const calculatePrediction = (
   currentMonthNums: string[] = [],
   todaysRes: string[] = [],
   past4DaysMurda: string[] = [],
-  past10DaysNums: string[] = [] // NEW: 10 Din gap check karne ke liye
+  past10DaysNums: string[] = []
 ): PredictionResult => {
   const dateObj = new Date(inputs.date);
   const jsDay = dateObj.getDay();
@@ -146,17 +147,17 @@ export const calculatePrediction = (
   const jodiScores: Record<string, number> = {};
   const rawList: string[] = [];
 
-  // 1. "Atma" (Base Number Collection) - कल के 4 रिज़ल्ट से मास्टर शीट के नंबर उठाना
+  // 1. "Atma" (Base Number Collection)
   todaysRes.forEach(r => {
-    let key = r.trim();
-    if (key === '00') key = '100';
-    else key = parseInt(key, 10).toString().padStart(2, '0');
+    // BUG FIX: Removed the '00' to '100' conversion that was causing Master Sheet misses.
+    // Now '0' becomes '00', '8' becomes '08', which correctly matches Master Sheet keys.
+    let key = parseInt(r.trim(), 10).toString().padStart(2, '0');
     if (MASTER_SHEET[key]) {
       rawList.push(...MASTER_SHEET[key]);
     }
   });
 
-  // 2. Base Counting (1x, 2x, 4x...) - जो जितनी बार आया, उसका उतना स्कोर
+  // 2. Base Counting (1x, 2x, 4x...)
   const counts: Record<string, number> = {};
   rawList.forEach(num => {
     counts[num] = (counts[num] || 0) + 1;
@@ -164,14 +165,13 @@ export const calculatePrediction = (
 
   const outerHaruf = parseInt(dayOfMonth.toString().slice(-1));
   const rashi = (outerHaruf + 5) % 10;
-
   const LOGIC_3_JORIS = ['30', '03', '41', '14', '74', '47', '85', '58', '96', '69'];
 
   // 3. Scoring all 100 Jodis
   for (let i = 1; i <= 100; i++) {
     const jodi = i === 100 ? '00' : i.toString().padStart(2, '0');
     
-    // Base score (Atma)
+    // JODAS filter is permanently removed. Jodas will calculate just like normal numbers.
     let score = counts[jodi] || 0; 
 
     // Baki Formule add honge
@@ -208,7 +208,7 @@ export const calculatePrediction = (
       }
     }
 
-    // 10 Din ka Gap Rule: Agar family ka koi bhi number pichle 10 din me nahi aaya toh +2 point
+    // 10 Din ka Gap Rule
     if (past10DaysNums && past10DaysNums.length > 0) {
       const fam = getFamily(jodi);
       const hasAppeared = fam.some(f => past10DaysNums.includes(f));
@@ -228,35 +228,26 @@ export const calculatePrediction = (
   const l2 = final30.slice(4, 14);
   const l3 = final30.slice(14, 30);
 
-  // 4. TOKARI COUNT LOGIC - Sirf Atma ke number group karke descending order me
+  // 4. TOKARI COUNT LOGIC - BUG FIX: No more grouping (39/93). Displays straight numbers.
   const tokariItems: TokariItem[] = [];
-  const tokariBuilder = new Map<string, { jodis: string[], count: number }>();
 
-  Object.keys(counts).forEach(jodi => {
-    const reversed = jodi.split('').reverse().join('');
-    const min = parseInt(jodi) < parseInt(reversed) ? jodi : reversed;
-    const max = parseInt(jodi) > parseInt(reversed) ? jodi : reversed;
-    const id = jodi === reversed ? jodi : `${min}/${max}`;
-
-    if (!tokariBuilder.has(id)) {
-      tokariBuilder.set(id, {
-        jodis: jodi === reversed ? [jodi] : [min, max],
-        count: 0
+  Object.entries(counts).forEach(([jodi, count]) => {
+    if (count > 0) {
+      tokariItems.push({
+        id: jodi,      // Single jodi jese "16", "47"
+        jodis: [jodi], 
+        count: count   // Uski actual master sheet frequency
       });
     }
-    tokariBuilder.get(id)!.count += counts[jodi];
   });
 
-  for (const [id, data] of tokariBuilder.entries()) {
-    if (data.count > 0) {
-      tokariItems.push({ id, jodis: data.jodis, count: data.count });
-    }
-  }
+  // Sort descending by count, then sort numerically for a clean look
+  tokariItems.sort((a, b) => b.count - a.count || parseInt(a.id) - parseInt(b.id));
 
   return { 
     l1, 
     l2, 
     l3, 
-    tokari: tokariItems.sort((a, b) => b.count - a.count) 
+    tokari: tokariItems 
   };
 };

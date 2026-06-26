@@ -130,13 +130,112 @@ const getFamily = (jodi: string): string[] => {
   return [a+b, b+a, a+br, br+a, ar+b, b+ar, ar+br, br+ar];
 };
 
+// [NEW] Gap/Daane series logic for Operator Scanner
+const getDaneSeries = (n1: string, n2: string): string[] => {
+  const minPalat = (str: string) => {
+    const p = str[1] + str[0];
+    return parseInt(str) < parseInt(p) ? str : p;
+  };
+  const norm1 = minPalat(n1);
+  const norm2 = minPalat(n2);
+  const diff = Math.abs(parseInt(norm2) - parseInt(norm1));
+
+  if (diff === 1 || diff === 10) {
+    const num1 = parseInt(norm1);
+    const num2 = parseInt(norm2);
+    const nextNum = num2 + (num2 - num1);
+    const prevNum = num1 - (num2 - num1);
+
+    const traps: string[] = [];
+    if (nextNum >= 0 && nextNum <= 99) {
+      const s = nextNum.toString().padStart(2, '0');
+      traps.push(s, s[1] + s[0]);
+    }
+    if (prevNum >= 0 && prevNum <= 99) {
+      const s = prevNum.toString().padStart(2, '0');
+      traps.push(s, s[1] + s[0]);
+    }
+    traps.push(n1, n1[1] + n1[0], n2, n2[1] + n2[0]);
+    return Array.from(new Set(traps));
+  }
+  return [];
+};
+
+// [NEW] Operator Scanner (Gap Trap, Repeat, High/Low)
+const operatorScanner = (historyBlocks: string[][]): string[] => {
+  let specialOpNums: string[] = [];
+  if (historyBlocks.length < 5) return specialOpNums;
+
+  const last5 = historyBlocks.slice(-5);
+  let gapFound = false;
+
+  // Repeat Alert
+  for (let i = 1; i < last5.length; i++) {
+    for (const num of last5[i]) {
+      if (last5[i - 1].includes(num)) specialOpNums.push(num);
+    }
+  }
+
+  // Gap/Daane ki chaal
+  const todayIdx = historyBlocks.length;
+  for (let G = 2; G <= 11; G++) {
+    if (gapFound) break;
+    for (const targetGap of [G - 1, G, G + 1]) {
+      const idxY = todayIdx - targetGap;
+      const idxX = idxY - G;
+      if (idxX >= 0 && idxY < historyBlocks.length) {
+        const numsX = historyBlocks[idxX];
+        const numsY = historyBlocks[idxY];
+        for (const nx of numsX) {
+          for (const ny of numsY) {
+            const traps = getDaneSeries(nx, ny);
+            if (traps.length > 0) {
+              specialOpNums.push(...traps);
+              gapFound = true;
+              break;
+            }
+          }
+          if (gapFound) break;
+        }
+      }
+    }
+  }
+
+  // Murda Gap Trap
+  let murdaFound = false;
+  for (let i = 1; i < last5.length; i++) {
+    if (last5[i].some(r => last5[i - 1].includes(r))) {
+      murdaFound = true;
+      break;
+    }
+  }
+  if (!murdaFound && last5.length > 0) {
+    specialOpNums.push(...last5[last5.length - 1].slice(0, 2));
+  }
+
+  // High/Low Trap
+  const last16Nums = last5.slice(-4).flat();
+  const highCount = last16Nums.filter(x => parseInt(x) >= 50).length;
+  if (highCount >= 12) {
+    specialOpNums.push(...UNIVERSAL.filter(x => parseInt(x) < 50).slice(0, 2));
+  } else if (highCount <= 4) {
+    specialOpNums.push(...UNIVERSAL.filter(x => parseInt(x) >= 50).slice(0, 2));
+  }
+
+  return Array.from(new Set(specialOpNums)).slice(0, 5); // Return top 5 special traps
+};
+
 export const calculatePrediction = (
   inputs: PredictionInput,
   selectedFormulas: string[],
   pastMurda: string[] = [],
   currentMonthNums: string[] = [],
   todaysRes: string[] = [],
-  past4DaysMurda: string[] = []
+  past4DaysMurda: string[] = [],
+  // NAYE PARAMETERS JO PYTHON LOGIC KE LIYE CHAHIYE
+  recent7DaysNums: string[] = [], 
+  historyBlocks: string[][] = [], 
+  useHarufBonus: boolean = true 
 ): PredictionResult => {
   const dateObj = new Date(inputs.date);
   const jsDay = dateObj.getDay();
@@ -162,8 +261,24 @@ export const calculatePrediction = (
 
   const outerHaruf = parseInt(dayOfMonth.toString().slice(-1));
   const rashi = (outerHaruf + 5) % 10;
-
   const LOGIC_3_JORIS = ['30', '03', '41', '14', '74', '47', '85', '58', '96', '69'];
+
+  // [NEW] Top Haruf Logic (+5 Bonus)
+  let topHarufs = ['0', '1'];
+  if (recent7DaysNums.length > 0) {
+    const harufCounter: Record<string, number> = {};
+    recent7DaysNums.forEach(num => {
+      harufCounter[num[0]] = (harufCounter[num[0]] || 0) + 1;
+      harufCounter[num[1]] = (harufCounter[num[1]] || 0) + 1;
+    });
+    topHarufs = Object.entries(harufCounter)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(entry => entry[0]);
+  }
+
+  // [NEW] Scan for Operator Traps
+  const specialOpNums = operatorScanner(historyBlocks);
 
   // ====== 100% GARANTEE LOOP: Evaluate all 100 Jodis ======
   for (let i = 1; i <= 100; i++) {
@@ -205,11 +320,44 @@ export const calculatePrediction = (
       }
     }
 
+    // [NEW] Haruf Bonus Rule
+    if (useHarufBonus && (topHarufs.includes(jodi[0]) || topHarufs.includes(jodi[1]))) {
+      score += 5;
+      details.push("TopHaruf(+5)");
+    }
+
     jodiScores[jodi] = score;
     scoreBreakdown[jodi] = details;
   }
 
+  // [NEW] Mahine ke aakhir ka logic (Date >= 22)
+  if (dayOfMonth >= 22) {
+    const allKeys = Object.keys(jodiScores);
+    allKeys.forEach(jodi => {
+      const fam = getFamily(jodi);
+      fam.forEach(fMem => {
+        if (!currentMonthNums.includes(fMem)) {
+          jodiScores[fMem] += 10;
+          if (!scoreBreakdown[fMem].includes("MonthEndFam(+10)")) {
+            scoreBreakdown[fMem].push("MonthEndFam(+10)");
+          }
+        }
+      });
+    });
+  }
+
+  // [NEW] Joda cutting yahan se HATA DI GAYI HAI (Ab joode poori tarah se allowed hain)
   const filteredJodis: Record<string, number> = jodiScores;
+
+  // [NEW] Operator Traps ko Force karke 30 me laane ke liye Massive Point (+500)
+  specialOpNums.forEach(opNum => {
+    if (filteredJodis[opNum] !== undefined) {
+      filteredJodis[opNum] += 500;
+      if (!scoreBreakdown[opNum].includes("OperatorTrap(+500)")) {
+        scoreBreakdown[opNum].push("OperatorTrap(+500)");
+      }
+    }
+  });
 
   const sortedJodis = Object.keys(filteredJodis).sort((a, b) => filteredJodis[b] - filteredJodis[a]);
   const final30 = sortedJodis.slice(0, 30);

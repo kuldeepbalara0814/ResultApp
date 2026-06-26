@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Zap, Check, Copy, Send, Target, RefreshCw } from 'lucide-react';
 import { PredictionInput, PredictionResult } from '../types';
-import { calculatePrediction } from '../utils/formulas';
-import { calculateLedger } from '../utils/ledger';
-import { saveTrackerEntry, getAllResultsSorted } from '../utils/storage';
+import { calculatePrediction } from '../helpers/formulas';
+import { calculateLedger } from '../helpers/ledger';
+import { saveTrackerEntry, getAllResultsSorted } from '../helpers/storage';
 
 const FORMULAS = [
   { id: '2', label: '2 - Evergreen' },
@@ -13,7 +13,8 @@ const FORMULAS = [
   { id: '6', label: '6 - Murda' },
   { id: '7', label: '7 - Haruf' },
   { id: '8', label: '8 - Baki' },
-  { id: '9', label: '9 - Month Trend' }
+  { id: '9', label: '9 - Month Trend' },
+  { id: '10', label: '10 - 3 Ka Logic' }
 ];
 
 export default function PredictTab() {
@@ -89,6 +90,18 @@ export default function PredictTab() {
         if (r.ds) pastMurda.push(r.ds);
       });
 
+      const past4DaysMurda: string[] = [];
+      const past4Days = pastResults
+        .filter(r => new Date(r.date) < new Date(inputs.date))
+        .slice(0, 4);
+
+      past4Days.forEach(r => {
+        if (r.fd) past4DaysMurda.push(r.fd);
+        if (r.gb) past4DaysMurda.push(r.gb);
+        if (r.gl) past4DaysMurda.push(r.gl);
+        if (r.ds) past4DaysMurda.push(r.ds);
+      });
+
       const currentYm = inputs.date.substring(0, 7);
       const currentMonthNums: string[] = [];
       pastResults.filter(r => r.date.startsWith(currentYm)).forEach(r => {
@@ -119,7 +132,7 @@ export default function PredictTab() {
       }
 
       // Reverse todaysRes so it processes in chronological order if needed, but counter just counts them anyway.
-      const res = calculatePrediction(inputs, selectedFormulas, pastMurda, currentMonthNums, todaysRes.slice(0, 4));
+      const res = calculatePrediction(inputs, selectedFormulas, pastMurda, currentMonthNums, todaysRes.slice(0, 4), past4DaysMurda);
       setResult(res);
       setIsPredicting(false);
     }, 800);
@@ -378,4 +391,4 @@ ${allJodis.join(', ')}
       )}
     </div>
   );
-               }
+}

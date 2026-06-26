@@ -73,6 +73,8 @@ export default function PredictTab() {
 
     setTimeout(() => {
       const pastResults = getAllResultsSorted();
+      
+      // 1. पिछले 3 दिन का डेटा (Murda के लिए)
       const pastMurda: string[] = [];
       const past3Days = pastResults
         .filter(r => new Date(r.date) < new Date(inputs.date))
@@ -85,6 +87,31 @@ export default function PredictTab() {
         if (r.ds) pastMurda.push(r.ds);
       });
 
+      // 2. पिछले 4 दिन का डेटा (Logic 3 के लिए)
+      const past4DaysMurda: string[] = [];
+      const past4Days = pastResults
+        .filter(r => new Date(r.date) < new Date(inputs.date))
+        .slice(0, 4);
+      past4Days.forEach(r => {
+        if (r.fd) past4DaysMurda.push(r.fd);
+        if (r.gb) past4DaysMurda.push(r.gb);
+        if (r.gl) past4DaysMurda.push(r.gl);
+        if (r.ds) past4DaysMurda.push(r.ds);
+      });
+
+      // 3. पिछले 10 दिन का डेटा (नए Gap Rule के लिए)
+      const past10DaysNums: string[] = [];
+      const past10Days = pastResults
+        .filter(r => new Date(r.date) < new Date(inputs.date))
+        .slice(0, 10);
+      past10Days.forEach(r => {
+        if (r.fd) past10DaysNums.push(r.fd);
+        if (r.gb) past10DaysNums.push(r.gb);
+        if (r.gl) past10DaysNums.push(r.gl);
+        if (r.ds) past10DaysNums.push(r.ds);
+      });
+
+      // 4. करेंट मंथ का डेटा
       const currentYm = inputs.date.substring(0, 7);
       const currentMonthNums: string[] = [];
       pastResults.filter(r => r.date.startsWith(currentYm)).forEach(r => {
@@ -94,6 +121,7 @@ export default function PredictTab() {
         if (r.ds) currentMonthNums.push(r.ds);
       });
 
+      // 5. कल के 4 रिज़ल्ट (Atma/Base Score के लिए)
       const todaysRes: string[] = [];
       const userInputs = [inputs.ds, inputs.gl, inputs.gb, inputs.fd].filter(v => v !== '');
       todaysRes.push(...userInputs);
@@ -112,7 +140,17 @@ export default function PredictTab() {
         }
       }
 
-      const res = calculatePrediction(inputs, selectedFormulas, pastMurda, currentMonthNums, todaysRes.slice(0, 4));
+      // अपडेटेड फॉर्मूला कॉल (सारे नए पैरामीटर्स के साथ)
+      const res = calculatePrediction(
+        inputs, 
+        selectedFormulas, 
+        pastMurda, 
+        currentMonthNums, 
+        todaysRes.slice(0, 4),
+        past4DaysMurda,
+        past10DaysNums
+      );
+      
       setResult(res);
       setIsPredicting(false);
     }, 800);

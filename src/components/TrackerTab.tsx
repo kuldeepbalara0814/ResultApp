@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Target, Wallet, Landmark, TrendingUp, Edit2, Trash2, Settings, BarChart2 } from 'lucide-react';
+import { Target, Wallet, Landmark, TrendingUp, Edit2, Trash2, Settings, BarChart2, Activity } from 'lucide-react';
 import { TrackerEntry, PassLocation } from '../types';
 import { getTrackerEntries, saveTrackerEntry, deleteTrackerEntry, setInitialCapital } from '../utils/storage';
 import { calculateLedger } from '../utils/ledger';
@@ -22,43 +22,58 @@ export default function TrackerTab() {
 
   const ledger = useMemo(() => calculateLedger(), [entries]);
 
+  // ==========================================
+  // [NEW] Advanced Market Performance Logic
+  // ==========================================
+  const marketPerformance = useMemo(() => {
+    const stats: Record<string, { wins: number, recentDates: string[] }> = {
+      FD: { wins: 0, recentDates: [] },
+      GB: { wins: 0, recentDates: [] },
+      GL: { wins: 0, recentDates: [] },
+      DS: { wins: 0, recentDates: [] }
+    };
+
+    let totalCompletedPlays = 0;
+
+    // पुराना इतिहास पहले प्रोसेस होता है, इसलिए हम unshift का यूज़ करेंगे
+    // ताकि सबसे नई तारीख लिस्ट में सबसे आगे रहे
+    ledger.history.forEach(h => {
+      if (h.isPlay && h.passLocation !== 'PENDING') {
+        totalCompletedPlays++;
+        if (h.passLocation !== 'FAIL' && stats[h.passLocation]) {
+          stats[h.passLocation].wins += 1;
+          stats[h.passLocation].recentDates.unshift(h.date); 
+        }
+      }
+    });
+
+    return { stats, totalCompletedPlays };
+  }, [ledger.history]);
+
   useEffect(() => {
     setCapitalInput(ledger.initialCapital.toString());
   }, [ledger.initialCapital]);
 
   const handleSaveCapital = () => {
     setInitialCapital(parseInt(capitalInput, 10) || 15000);
-    setEntries(getTrackerEntries()); // Trigger recalculation
+    setEntries(getTrackerEntries());
     setShowSettings(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const newEntry: TrackerEntry = {
-      id: formData.id || formData.date, // Use date as ID if new
-      date: formData.date,
-      isPlay: formData.isPlay,
-      passLocation: formData.isPlay ? formData.passLocation : null
-    };
-    
-    saveTrackerEntry(newEntry);
-    setEntries(getTrackerEntries());
-    
-    setFormData({
-      id: undefined,
-      date: new Date().toISOString().split('T')[0],
-      isPlay: true,
-      passLocation: 'PENDING'
+    saveTrackerEntry({ 
+      id: formData.id || formData.date, 
+      date: formData.date, 
+      isPlay: formData.isPlay, 
+      passLocation: formData.isPlay ? formData.passLocation : null 
     });
+    setEntries(getTrackerEntries());
+    setFormData({ id: undefined, date: new Date().toISOString().split('T')[0], isPlay: true, passLocation: 'PENDING' });
   };
 
   const handleEdit = (entry: TrackerEntry) => {
-    setFormData({
-      id: entry.id,
-      date: entry.date,
-      isPlay: entry.isPlay,
-      passLocation: entry.passLocation || 'PENDING'
-    });
+    setFormData({ id: entry.id, date: entry.date, isPlay: entry.isPlay, passLocation: entry.passLocation || 'PENDING' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -71,8 +86,6 @@ export default function TrackerTab() {
 
   const currentPocket = Math.min(ledger.finalCash, ledger.currentDailyLimit);
   const currentEmergency = Math.max(0, ledger.finalCash - currentPocket);
-
-  // [NEW] Chart Data Preparation (Last 7 Days)
   const recentHistory = [...ledger.history].slice(0, 7).reverse();
   const maxProfitAbs = Math.max(...recentHistory.map(r => Math.abs(r.netProfit || 0)), 1);
 
@@ -127,30 +140,58 @@ export default function TrackerTab() {
         </div>
       </div>
 
-      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-4">
-        <div className="flex items-center space-x-3 mb-3">
-          <div className="w-10 h-10 rounded-full bg-teal-400/10 flex items-center justify-center border border-teal-400/20">
-            <TrendingUp className="w-5 h-5 text-teal-400" />
-          </div>
-          <div>
-            <div className="text-sm text-slate-400">Current Base Rates (₹)</div>
-            <div className="font-bold text-white text-sm">
-              FD:{ledger.currentRates.FD} | GB:{ledger.currentRates.GB} | GL:{ledger.currentRates.GL} | DS:{ledger.currentRates.DS}
-            </div>
-          </div>
-        </div>
-        <div className="text-xs text-slate-500 border-t border-slate-800 pt-2">
-          Daily Total Limit: <strong className="text-teal-400">₹{ledger.currentDailyLimit.toLocaleString()}</strong>
+      {/* Market Performance Card (Updated with Win %, Dates, and 2x2 Grid) */}
+      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 shadow-lg">
+        <h2 className="text-white font-semibold flex items-center gap-2 mb-4">
+          <Activity className="w-5 h-5 text-teal-400" />
+          मार्केट रिपोर्ट (Performance)
+        </h2>
+        <div className="grid grid-cols-2 gap-3">
+          {['FD', 'GB', 'GL', 'DS'].map((m) => {
+            const data = marketPerformance.stats[m];
+            
+            // Win Rate Calculation
+            const winRate = marketPerformance.totalCompletedPlays > 0
+              ? Math.round((data.wins / marketPerformance.totalCompletedPlays) * 100)
+              : 0;
+
+            // Date Formatting (DD/MM)
+            const recentText = data.recentDates.length > 0
+              ? data.recentDates.slice(0, 2).map(d => {
+                  const parts = d.split('-');
+                  return `${parts[2]}/${parts[1]}`;
+                }).join(', ')
+              : '--';
+
+            return (
+              <div key={m} className="bg-[#0B1120] border border-slate-800 rounded-xl p-3 flex flex-col justify-between">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-bold text-slate-300">{m}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    winRate >= 25 ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'
+                  }`}>
+                    {winRate}%
+                  </span>
+                </div>
+                <div className="text-2xl font-bold text-white mb-2">
+                  {data.wins} <span className="text-[10px] font-normal text-slate-500 uppercase tracking-wider">Wins</span>
+                </div>
+                <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-auto">
+                  <div className={`w-1.5 h-1.5 rounded-full ${data.recentDates.length > 0 ? 'bg-teal-400/60' : 'bg-slate-700'}`}></div>
+                  <span>Last: {recentText}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* [NEW] Profit & Loss Chart Section */}
+      {/* P&L Chart */}
       <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 shadow-lg">
         <h2 className="text-white font-semibold flex items-center gap-2 mb-6">
           <BarChart2 className="w-5 h-5 text-teal-400" />
           पिछले 7 दिन का P&L ग्राफ़
         </h2>
-        
         {recentHistory.length === 0 ? (
           <div className="text-center text-sm text-slate-500 py-6">ग्राफ़ दिखाने के लिए अभी कोई डेटा नहीं है</div>
         ) : (
@@ -160,12 +201,9 @@ export default function TrackerTab() {
               const isProfit = val > 0;
               const isLoss = val < 0;
               const absVal = Math.abs(val);
-              // Calculate height percentage (min 5% so it's visible even for small amounts)
               const heightPct = val === 0 ? 5 : Math.max((absVal / maxProfitAbs) * 100, 5);
-              
-              // Format value to 'k' for thousands
               const displayVal = absVal > 999 ? (absVal / 1000).toFixed(1) + 'k' : absVal;
-              const dateStr = record.date.split('-')[2]; // Extract just the day
+              const dateStr = record.date.split('-')[2];
 
               return (
                 <div key={record.id} className="flex flex-col items-center gap-1.5 w-8 group">

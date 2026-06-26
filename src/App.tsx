@@ -26,6 +26,7 @@ export default function App() {
   const handleLogout = () => {
     logoutUser();
     setIsAuthenticated(false);
+    setActiveTab('home');
   };
 
   if (!isAuthenticated) {
@@ -35,7 +36,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#0B1120] text-slate-200 font-sans selection:bg-teal-400/30">
       <div className="max-w-md mx-auto relative min-h-screen bg-[#0B1120] shadow-2xl flex flex-col">
-        {/* Main Content Area */}
         <div className="overflow-y-auto flex-1 w-full pb-16">
           {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} onLogout={handleLogout} />}
           {activeTab === 'predict' && <PredictTab />}
@@ -44,7 +44,6 @@ export default function App() {
           {activeTab === 'tracker' && <TrackerTab />}
         </div>
         
-        {/* Bottom Navigation */}
         <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
       </div>
     </div>

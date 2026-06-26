@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { History, Edit3, Calendar } from 'lucide-react';
+import { History, Edit3, Calendar, Download } from 'lucide-react';
 import { GameResult } from '../types';
-import { getAllResultsSorted } from '../utils/storage';
+import { getAllResultsSorted, downloadBackupData } from '../utils/storage';
 
 export default function RecordsTab({ setActiveTab }: { setActiveTab: (t: string) => void }) {
   const [records, setRecords] = useState<GameResult[]>([]);
@@ -16,9 +16,21 @@ export default function RecordsTab({ setActiveTab }: { setActiveTab: (t: string)
 
   return (
     <div className="p-4 space-y-6 pb-24">
+      {/* Header with Title and Backup Button */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-teal-400">History Records</h1>
-        <History className="w-5 h-5 text-slate-400" />
+        <div className="flex items-center space-x-2">
+          <History className="w-5 h-5 text-slate-400" />
+          <h1 className="text-xl font-bold text-teal-400">History Records</h1>
+        </div>
+        
+        {/* Backup Download Button */}
+        <button
+          onClick={downloadBackupData}
+          className="flex items-center space-x-1.5 bg-teal-400/10 hover:bg-teal-400/20 text-teal-400 px-3 py-1.5 rounded-lg border border-teal-400/30 transition-colors text-sm font-medium"
+        >
+          <Download className="w-4 h-4" />
+          <span>Backup</span>
+        </button>
       </div>
 
       <div className="space-y-4">

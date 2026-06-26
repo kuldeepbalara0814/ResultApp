@@ -1,20 +1,15 @@
 import React, { useState } from 'react';
 import { Lock } from 'lucide-react';
-import { triggerSuccessFeedback } from '../utils/feedback'; // नया साउंड सिस्टम जोड़ा
 
 export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
   const [input, setInput] = useState('');
 
   const handleCheck = (val: string) => {
     setInput(val);
-    // 0814 आपका मेन पिन है, और Kuldeep0814 आपका मास्टर पासवर्ड है
+    
+    // बिना किसी साउंड या डिले के डायरेक्ट अनलॉक
     if (val === '0814' || val === 'Kuldeep0814') {
-      triggerSuccessFeedback(); // पिन सही होते ही टिंग की आवाज़ और वाइब्रेशन!
-      
-      // थोड़ा सा डिले (delay) ताकि आवाज़ पूरी आ सके फिर ऐप खुले
-      setTimeout(() => {
-        onUnlock();
-      }, 200);
+      onUnlock();
     }
   };
 

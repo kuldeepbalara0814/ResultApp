@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Zap, Check, Copy, Send, Target, RefreshCw } from 'lucide-react';
 import { PredictionInput, PredictionResult } from '../types';
+// ध्यान दें: अगर आपका फोल्डर helpers है, तो नीचे utils की जगह helpers कर लें
 import { calculatePrediction } from '../utils/formulas';
 import { calculateLedger } from '../utils/ledger';
 import { saveTrackerEntry, getAllResultsSorted } from '../utils/storage';
@@ -32,17 +33,20 @@ export default function PredictTab() {
   const [result, setResult] = useState<PredictionResult | null>(null);
   const [isPredicting, setIsPredicting] = useState(false);
   
+  // New States for WhatsApp sharing
   const [selectedGame, setSelectedGame] = useState<'FD' | 'GB' | 'GL' | 'DS'>('FD');
   const [copied, setCopied] = useState(false);
   const [logged, setLogged] = useState(false);
 
+  // Get current rates based on risk management
   const ledger = useMemo(() => calculateLedger(), []);
 
+  // Handle Auto mode fetching latest results
   useEffect(() => {
     if (inputMode === 'auto') {
       const allResults = getAllResultsSorted();
       if (allResults.length > 0) {
-        const latest = allResults[0];
+        const latest = allResults[0]; // Most recent saved result
         setInputs(prev => ({
           ...prev,
           fd: latest.fd,
@@ -72,6 +76,7 @@ export default function PredictTab() {
     setCopied(false);
     setLogged(false);
 
+    // Simulate loading for better UX
     setTimeout(() => {
       const pastResults = getAllResultsSorted();
       const pastMurda: string[] = [];
@@ -111,7 +116,9 @@ export default function PredictTab() {
       const userInputs = [inputs.ds, inputs.gl, inputs.gb, inputs.fd].filter(v => v !== '');
       todaysRes.push(...userInputs);
 
+      // If less than 4, fill from pastResults history
       if (todaysRes.length < 4) {
+        // Collect all history numbers in reverse order (latest first)
         const allPastNums: string[] = [];
         pastResults.forEach(r => {
           if (r.ds) allPastNums.push(r.ds);
@@ -125,6 +132,7 @@ export default function PredictTab() {
         }
       }
 
+      // Reverse todaysRes so it processes in chronological order if needed, but counter just counts them anyway.
       const res = calculatePrediction(inputs, selectedFormulas, pastMurda, currentMonthNums, todaysRes.slice(0, 4), past4DaysMurda);
       setResult(res);
       setIsPredicting(false);
@@ -151,7 +159,7 @@ ${allJodis.join(', ')}
 
   const handleLogToTracker = () => {
     saveTrackerEntry({
-      id: inputs.date,
+      id: inputs.date, // Use date as ID to avoid duplicates on same day
       date: inputs.date,
       isPlay: true,
       passLocation: 'PENDING'
@@ -164,6 +172,7 @@ ${allJodis.join(', ')}
     <div className="p-4 space-y-6 pb-24">
       <h1 className="text-xl font-bold text-teal-400 mb-2">आज की प्रेडिक्शन</h1>
 
+      {/* Form Input Section */}
       <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-white font-semibold">नंबर दर्ज करें</h2>
@@ -223,6 +232,7 @@ ${allJodis.join(', ')}
         )}
       </div>
 
+      {/* Formulas Section */}
       <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-5">
         <h2 className="text-white font-semibold">फॉर्मूला चुनें</h2>
         
@@ -256,10 +266,12 @@ ${allJodis.join(', ')}
         <span>{isPredicting ? 'प्रेडिक्शन हो रही है...' : 'प्रेडिक्शन निकालें'}</span>
       </button>
 
+      {/* Results Section */}
       {result && (
         <div className="space-y-6 mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h2 className="text-2xl font-bold text-teal-400 text-center">प्रेडिक्शन का रिजल्ट</h2>
           
+          {/* WhatsApp Share / Play Panel */}
           <div className="bg-gradient-to-b from-[#374151] to-[#111827] border border-slate-700 rounded-2xl p-5 shadow-xl">
             <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
               <Send className="w-5 h-5 text-teal-400" />
@@ -315,6 +327,7 @@ ${allJodis.join(', ')}
             </div>
           </div>
 
+          {/* L1 - VIP */}
           <div className="border border-green-500/30 rounded-2xl overflow-hidden bg-[#111827]">
             <div className="bg-green-500/10 px-4 py-3 border-b border-green-500/20">
               <h3 className="text-green-500 font-medium">L1 - सुपर VIP ({result.l1.length} जोड़ी)</h3>
@@ -329,6 +342,7 @@ ${allJodis.join(', ')}
             </div>
           </div>
 
+          {/* L2 - Main */}
           <div className="border border-blue-500/30 rounded-2xl overflow-hidden bg-[#111827]">
             <div className="bg-blue-500/10 px-4 py-3 border-b border-blue-500/20">
               <h3 className="text-blue-500 font-medium">L2 - मेन ({result.l2.length} जोड़ी)</h3>
@@ -343,6 +357,7 @@ ${allJodis.join(', ')}
             </div>
           </div>
 
+          {/* L3 - Support */}
           <div className="border border-teal-400/30 rounded-2xl overflow-hidden bg-[#111827]">
             <div className="bg-teal-400/10 px-4 py-3 border-b border-teal-400/20">
               <h3 className="text-teal-400 font-medium">L3 - सपोर्ट ({result.l3.length} जोड़ी)</h3>
@@ -357,6 +372,7 @@ ${allJodis.join(', ')}
             </div>
           </div>
 
+          {/* Tokari Counts */}
           <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5">
             <h3 className="text-white font-semibold mb-4">टोकरी काउंट्स</h3>
             <div className="grid grid-cols-4 md:grid-cols-5 gap-3">

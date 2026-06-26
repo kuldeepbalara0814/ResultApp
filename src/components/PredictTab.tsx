@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Zap, Check, Copy, Send, Target, RefreshCw } from 'lucide-react';
 import { PredictionInput, PredictionResult } from '../types';
-// ध्यान दें: अगर आपका फोल्डर helpers है, तो नीचे utils की जगह helpers कर लें
 import { calculatePrediction } from '../utils/formulas';
 import { calculateLedger } from '../utils/ledger';
 import { saveTrackerEntry, getAllResultsSorted } from '../utils/storage';

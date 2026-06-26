@@ -4,10 +4,11 @@ import { Lock } from 'lucide-react';
 export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
   const [input, setInput] = useState('');
 
-  const handleCheck = (val: string) => {
+  const handleCheck = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
     setInput(val);
     
-    // बिना किसी साउंड या डिले के डायरेक्ट अनलॉक
+    // एकदम साधारण और सेफ ताला
     if (val === '0814' || val === 'Kuldeep0814') {
       onUnlock();
     }
@@ -24,7 +25,7 @@ export default function AppLock({ onUnlock }: { onUnlock: () => void }) {
           type="password"
           maxLength={15}
           value={input}
-          onChange={(e) => handleCheck(e.target.value)}
+          onChange={handleCheck}
           placeholder="Enter PIN"
           className="w-full bg-[#0B1120] border border-slate-700 rounded-xl px-4 py-4 text-center text-2xl font-mono text-teal-400 focus:outline-none focus:border-teal-400"
         />

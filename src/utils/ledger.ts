@@ -7,6 +7,7 @@ export interface LedgerResult {
   finalBank: number;
   currentDailyLimit: number;
   initialCapital: number;
+  currentRates: Record<string, number>; 
 }
 
 export function calculateLedger(): LedgerResult {
@@ -16,6 +17,13 @@ export function calculateLedger(): LedgerResult {
   const initialCap = getInitialCapital();
   let currentCash = initialCap;
   let currentBank = 0;
+  
+  const currentRates = {
+    FD: 95,
+    GB: 95,
+    GL: 95,
+    DS: 95
+  };
   
   const history = [];
 
@@ -81,6 +89,7 @@ export function calculateLedger(): LedgerResult {
     finalCash: Math.round(currentCash),
     finalBank: Math.round(currentBank),
     currentDailyLimit: finalLimit,
-    initialCapital: initialCap
+    initialCapital: initialCap,
+    currentRates
   };
 }

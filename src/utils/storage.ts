@@ -75,3 +75,56 @@ export const deleteTrackerEntry = (id: string) => {
   const updated = existing.filter(entry => entry.id !== id);
   localStorage.setItem(TRACKER_KEY, JSON.stringify(updated));
 };
+
+// ==========================================
+// [NEW] BACKUP DOWNLOAD FEATURE
+// ==========================================
+export const downloadBackupData = () => {
+  try {
+    // 1. सारा सेव किया हुआ डेटा निकालें (Results, Tracker, aur Capital)
+    const results = getAllResults();
+    const tracker = getTrackerEntries();
+    const initialCapital = getInitialCapital();
+
+    // अगर कोई भी डेटा मौजूद नहीं है, तो एरर दिखाएं
+    if (Object.keys(results).length === 0 && tracker.length === 0) {
+      alert("बैकअप के लिए अभी कोई डेटा मौजूद नहीं है!");
+      return false;
+    }
+
+    // 2. पूरे डेटा को एक ऑब्जेक्ट में पैक करें
+    const backupData = {
+      results,
+      tracker,
+      initialCapital,
+      backupDate: new Date().toISOString()
+    };
+
+    // 3. डेटा को JSON (फाइल) फॉर्मेट में बदलें
+    const jsonData = JSON.stringify(backupData, null, 2);
+    
+    // 4. एक डाउनलोड करने योग्य फाइल (Blob) बनाएं
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    // 5. फाइल का नाम आज की तारीख के साथ सेट करें
+    const today = new Date().toISOString().split('T')[0];
+    link.download = `Sahil_Master_Backup_${today}.json`;
+    
+    // 6. डाउनलोड स्टार्ट करें
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    
+    // 7. मेमोरी साफ़ करें (Cleanup)
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    return true;
+  } catch (error) {
+    console.error("Backup failed:", error);
+    alert("बैकअप डाउनलोड करने में कोई तकनीकी खराबी आ गई है।");
+    return false;
+  }
+};

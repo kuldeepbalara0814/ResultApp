@@ -3,7 +3,7 @@ import { PredictionInput, PredictionResult, TokariItem } from '../types';
 const EVERGREEN = ['3', '8', '6', '1', '9', '0', '7', '2'];
 const UNIVERSAL = ['02', '20', '04', '40', '06', '60', '24', '42', '28', '82', '46', '64', '68', '86'];
 const MAGIC = ['12', '23', '84', '96'];
-const JODAS = ['00', '11', '22', '33', '44', '55', '66', '77', '88', '99'];
+const JODAS = ['00', '11', '22', '33', '44', '55', '66', '77', '88', '99']; 
 
 const DAY_WISE_FIXED: Record<number, string[]> = {
   0: ['93', '92', '75', '73', '71', '62', '52', '38', '13', '09', '04'],
@@ -136,7 +136,8 @@ export const calculatePrediction = (
   pastMurda: string[] = [],
   currentMonthNums: string[] = [],
   todaysRes: string[] = [],
-  past4DaysMurda: string[] = []
+  past4DaysMurda: string[] = [],
+  past10DaysNums: string[] = [] // NEW: 10 Din gap check karne ke liye
 ): PredictionResult => {
   const dateObj = new Date(inputs.date);
   const jsDay = dateObj.getDay();
@@ -145,6 +146,7 @@ export const calculatePrediction = (
   const jodiScores: Record<string, number> = {};
   const rawList: string[] = [];
 
+  // 1. "Atma" (Base Number Collection) - कल के 4 रिज़ल्ट से मास्टर शीट के नंबर उठाना
   todaysRes.forEach(r => {
     let key = r.trim();
     if (key === '00') key = '100';
@@ -154,6 +156,7 @@ export const calculatePrediction = (
     }
   });
 
+  // 2. Base Counting (1x, 2x, 4x...) - जो जितनी बार आया, उसका उतना स्कोर
   const counts: Record<string, number> = {};
   rawList.forEach(num => {
     counts[num] = (counts[num] || 0) + 1;
@@ -164,14 +167,14 @@ export const calculatePrediction = (
 
   const LOGIC_3_JORIS = ['30', '03', '41', '14', '74', '47', '85', '58', '96', '69'];
 
+  // 3. Scoring all 100 Jodis
   for (let i = 1; i <= 100; i++) {
     const jodi = i === 100 ? '00' : i.toString().padStart(2, '0');
     
-    // यह Jodas को हमेशा के लिए फ़िल्टर (हटा) देगा
-    if (JODAS.includes(jodi)) continue;
+    // Base score (Atma)
+    let score = counts[jodi] || 0; 
 
-    let score = counts[jodi] || 0;
-
+    // Baki Formule add honge
     if (selectedFormulas.includes('6')) {
       if (pastMurda.includes(jodi)) { score += 10; }
       else {
@@ -205,9 +208,19 @@ export const calculatePrediction = (
       }
     }
 
+    // 10 Din ka Gap Rule: Agar family ka koi bhi number pichle 10 din me nahi aaya toh +2 point
+    if (past10DaysNums && past10DaysNums.length > 0) {
+      const fam = getFamily(jodi);
+      const hasAppeared = fam.some(f => past10DaysNums.includes(f));
+      if (!hasAppeared) {
+        score += 2;
+      }
+    }
+
     jodiScores[jodi] = score;
   }
 
+  // Top 30 Filter (Total Score ke aadhar par)
   const sortedJodis = Object.keys(jodiScores).sort((a, b) => jodiScores[b] - jodiScores[a]);
   const final30 = sortedJodis.slice(0, 30);
 
@@ -215,25 +228,35 @@ export const calculatePrediction = (
   const l2 = final30.slice(4, 14);
   const l3 = final30.slice(14, 30);
 
+  // 4. TOKARI COUNT LOGIC - Sirf Atma ke number group karke descending order me
   const tokariItems: TokariItem[] = [];
-  const processed = new Set<string>();
+  const tokariBuilder = new Map<string, { jodis: string[], count: number }>();
 
-  final30.forEach(jodi => {
-    if (processed.has(jodi)) return;
+  Object.keys(counts).forEach(jodi => {
     const reversed = jodi.split('').reverse().join('');
-    let id = '';
-    let jodisList: string[] = [];
-    if (jodi === reversed) {
-      id = jodi; jodisList = [jodi]; processed.add(jodi);
-    } else {
-      const min = parseInt(jodi) < parseInt(reversed) ? jodi : reversed;
-      const max = parseInt(jodi) > parseInt(reversed) ? jodi : reversed;
-      id = `${min}/${max}`; jodisList = [min, max];
-      processed.add(min); processed.add(max);
+    const min = parseInt(jodi) < parseInt(reversed) ? jodi : reversed;
+    const max = parseInt(jodi) > parseInt(reversed) ? jodi : reversed;
+    const id = jodi === reversed ? jodi : `${min}/${max}`;
+
+    if (!tokariBuilder.has(id)) {
+      tokariBuilder.set(id, {
+        jodis: jodi === reversed ? [jodi] : [min, max],
+        count: 0
+      });
     }
-    const count = counts[jodi] || 0;
-    tokariItems.push({ id, jodis: jodisList, count });
+    tokariBuilder.get(id)!.count += counts[jodi];
   });
 
-  return { l1, l2, l3, tokari: tokariItems.sort((a, b) => b.count - a.count) };
+  for (const [id, data] of tokariBuilder.entries()) {
+    if (data.count > 0) {
+      tokariItems.push({ id, jodis: data.jodis, count: data.count });
+    }
+  }
+
+  return { 
+    l1, 
+    l2, 
+    l3, 
+    tokari: tokariItems.sort((a, b) => b.count - a.count) 
+  };
 };

@@ -4,15 +4,13 @@ import ChangePasswordModal from './ChangePasswordModal';
 import UserManagementModal from './UserManagementModal';
 import GeminiAssistantModal from './GeminiAssistantModal';
 import { getCurrentUser, getCurrentRole } from '../utils/auth';
-import { useGoogleLogin } from '@react-oauth/google';
-import { getTrackerEntries } from '../utils/storage';
+import { getTrackerEntries, downloadBackupData } from '../utils/storage'; 
 
 export default function HomeTab({ setActiveTab, onLogout }: { setActiveTab: (t: string) => void, onLogout: () => void }) {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showGeminiAssistant, setShowGeminiAssistant] = useState(false);
-  const [isBackingUp, setIsBackingUp] = useState(false);
-  const [backupMsg, setBackupMsg] = useState('');
+  
   const user = getCurrentUser();
   const role = getCurrentRole();
 
@@ -46,39 +44,10 @@ export default function HomeTab({ setActiveTab, onLogout }: { setActiveTab: (t: 
     return { successRate, totalPass, totalResolved, pending, l1Pass, l2Pass, l3Pass, totalFail };
   }, []);
 
-  const handleBackup = async (accessToken: string) => {
-    setIsBackingUp(true);
-    setBackupMsg('बैकअप हो रहा है...');
-    try {
-      const storageKeys = ['sahil_master_results', 'sahil_master_tracker_v2', 'sahil_master_users', 'sahil_admin_pwd'];
-      const backupData: Record<string, any> = {};
-      storageKeys.forEach(key => {
-        const val = localStorage.getItem(key);
-        if (val) backupData[key] = JSON.parse(val);
-      });
-      const fileContent = JSON.stringify(backupData, null, 2);
-      const file = new Blob([fileContent], { type: 'application/json' });
-      const metadata = { name: `SahilMasterBackup_${new Date().toISOString().split('T')[0]}.json`, mimeType: 'application/json' };
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-      form.append('file', file);
-      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` },
-        body: form,
-      });
-      if (res.ok) { setBackupMsg('बैकअप सफल रहा!'); }
-      else { setBackupMsg('बैकअप फेल हो गया।'); }
-    } catch (err) { setBackupMsg('कुछ त्रुटि हुई।'); }
-    setIsBackingUp(false);
-    setTimeout(() => setBackupMsg(''), 4000);
+  // Naya aur Safe Backup Function
+  const handleLocalBackup = () => {
+    downloadBackupData();
   };
-
-  const loginForDrive = useGoogleLogin({
-    onSuccess: (tokenResponse) => handleBackup(tokenResponse.access_token),
-    scope: 'https://www.googleapis.com/auth/drive.file',
-    onError: () => setBackupMsg('Google Login फेल हो गया।')
-  });
 
   return (
     <div className="p-4 space-y-6 pb-24">
@@ -137,10 +106,11 @@ export default function HomeTab({ setActiveTab, onLogout }: { setActiveTab: (t: 
               <button onClick={() => setShowGeminiAssistant(true)} className="bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 rounded-xl p-4 flex flex-col items-center justify-center space-y-2 transition-colors">
                 <Bot className="w-6 h-6 text-teal-400" /><span className="text-sm font-medium text-teal-400">Gemini सपोर्ट</span>
               </button>
-              <button onClick={() => loginForDrive()} disabled={isBackingUp} className="bg-[#111827] hover:bg-[#1F2937] border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center space-y-2 transition-colors col-span-2">
+              
+              {/* Naya Backup Button jo bina crash ke chalega */}
+              <button onClick={handleLocalBackup} className="bg-[#111827] hover:bg-[#1F2937] border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center space-y-2 transition-colors col-span-2">
                 <Cloud className="w-6 h-6 text-blue-400" />
-                <span className="text-sm font-medium text-white">{isBackingUp ? 'बैकअप जारी है...' : 'गूगल ड्राइव पर बैकअप'}</span>
-                {backupMsg && <span className="text-xs text-teal-400 mt-1">{backupMsg}</span>}
+                <span className="text-sm font-medium text-white">डेटा बैकअप डाउनलोड करें</span>
               </button>
             </>
           )}
@@ -181,4 +151,4 @@ export default function HomeTab({ setActiveTab, onLogout }: { setActiveTab: (t: 
       </div>
     </div>
   );
-                            }
+}

@@ -11,6 +11,7 @@ import LoginScreen from './components/LoginScreen';
 
 // Naye Components Import (Jo humne abhi banaye hain)
 import KhaiwalTab from './components/KhaiwalTab';
+import MembershipTab from './components/MembershipTab'; // <-- नया VIP पेज लिंक किया गया
 
 import { logoutUser } from './utils/auth';
 
@@ -55,6 +56,7 @@ export default function App() {
 
           {/* Naye Tabs (Bilkul Safe Tarike Se Linked) */}
           {activeTab === 'khaiwal' && <KhaiwalTab />}
+          {activeTab === 'membership' && <MembershipTab />} {/* <-- यहाँ पेज रेंडर होगा */}
 
         </div>
         

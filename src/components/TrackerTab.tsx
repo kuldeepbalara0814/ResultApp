@@ -1,30 +1,29 @@
 import React, { useState, useMemo } from 'react';
 import { Target, Wallet, Landmark, Settings, TrendingUp, Trash2 } from 'lucide-react';
-import { getTrackerEntries, deleteTrackerEntry, saveTrackerEntry } from '../utils/storage';
+import { getTrackerEntries, deleteTrackerEntry, saveTrackerEntry, getInitialCapital, setInitialCapital } from '../utils/storage';
 import { calculateLedger } from '../utils/ledger';
 
 export default function TrackerTab() {
   const [entries, setEntries] = useState(getTrackerEntries() || []);
-  const [capitalInput, setCapitalInput] = useState('15000');
+  const [capitalInput, setCapitalInput] = useState(getInitialCapital().toString());
   
-  // आज की तारीख डिफ़ॉल्ट सेट करने के लिए
   const getTodayDate = () => {
     const today = new Date();
-    return today.toLocaleDateString('en-GB'); // DD/MM/YYYY format
+    return today.toLocaleDateString('en-GB'); 
   };
 
   const [date, setDate] = useState(getTodayDate());
   const [isPlayed, setIsPlayed] = useState(true);
   const [status, setStatus] = useState('PENDING');
 
-  // लेजर और कैलकुलेशन का डेटा
+  // लेजर कैलकुलेशन
   const ledger = useMemo(() => {
     try {
       return calculateLedger() || {};
     } catch (e) {
-      return { finalCash: 15000, finalBank: 0, currentDailyLimit: 2100, emergencyFund: 12900, history: [] };
+      return { finalCash: 15000, finalBank: 0, currentDailyLimit: 2100, emergencyFund: 12900, history: [], currentRates: {FD: 10, GB: 15, GL: 20, DS: 25} };
     }
-  }, [entries]);
+  }, [entries, capitalInput]);
 
   const handleDelete = (id: string) => {
     if (confirm('क्या आप इस एंट्री को डिलीट करना चाहते हैं?')) {
@@ -33,7 +32,20 @@ export default function TrackerTab() {
     }
   };
 
-  // डेटा सेव करने का असली फंक्शन
+  // ⭐️ कैपिटल सेव करने का असली फंक्शन ⭐️
+  const handleSaveCapital = () => {
+    const newCap = parseFloat(capitalInput);
+    if (isNaN(newCap) || newCap < 15000) {
+      alert("कम से कम 15000 रुपये का बजट होना चाहिए!");
+      setCapitalInput(getInitialCapital().toString()); // रिसेट
+      return;
+    }
+    setInitialCapital(newCap);
+    setEntries([...getTrackerEntries()]); // UI को तुरंत रीफ्रेश करने के लिए
+    alert("नया कैपिटल सेव हो गया है! बेस रेट्स और लिमिट अपडेट कर दी गई हैं।");
+  };
+
+  // ⭐️ डेटा/एंट्री सेव करने का असली फंक्शन ⭐️
   const handleSaveData = () => {
     if (!date) {
       alert("कृपया तारीख दर्ज करें!");
@@ -48,21 +60,20 @@ export default function TrackerTab() {
     };
 
     saveTrackerEntry(newEntry);
-    setEntries(getTrackerEntries()); // UI को तुरंत अपडेट करने के लिए
-    
-    // सेव होने के बाद फॉर्म को रीसेट करना
-    setStatus('PENDING');
+    setEntries(getTrackerEntries()); 
+    setStatus('PENDING'); // सेव होने के बाद ड्रॉपडाउन वापस पेंडिंग पर आ जाएगा
   };
 
   const currentPocket = ledger.currentDailyLimit || 2100;
   const currentEmergency = ledger.emergencyFund || 12900;
   const totalCash = ledger.finalCash || 15000;
   const safeBank = ledger.finalBank || 0;
+  
+  const rates = ledger.currentRates || { FD: 10, GB: 15, GL: 20, DS: 25 };
 
   return (
     <div className="p-4 space-y-6 pb-24 font-sans text-white bg-[#0f172a] min-h-screen">
       
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-teal-400 flex items-center gap-2">
           <Target className="w-6 h-6" /> Risk Management
@@ -80,7 +91,10 @@ export default function TrackerTab() {
             onChange={(e) => setCapitalInput(e.target.value)}
             className="flex-1 bg-[#1e293b] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-teal-400"
           />
-          <button className="bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold px-6 py-3 rounded-xl transition-colors shadow-md">
+          <button 
+            onClick={handleSaveCapital}
+            className="bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold px-6 py-3 rounded-xl transition-colors shadow-md"
+          >
             Save
           </button>
         </div>
@@ -88,7 +102,6 @@ export default function TrackerTab() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-4">
-        {/* Total Cash Card */}
         <div className="bg-gradient-to-br from-teal-400 to-teal-500 rounded-2xl p-4 text-slate-900 shadow-lg relative overflow-hidden">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-bold">Total Cash</span>
@@ -101,7 +114,6 @@ export default function TrackerTab() {
           </div>
         </div>
 
-        {/* Safe Bank Card */}
         <div className="bg-[#1e293b] border border-slate-700 rounded-2xl p-4 shadow-lg flex flex-col justify-between">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-medium text-slate-400">Safe Bank (50%)</span>
@@ -121,7 +133,7 @@ export default function TrackerTab() {
           <div>
             <div className="text-xs font-medium text-slate-400">Current Base Rates (₹)</div>
             <div className="text-sm font-bold text-white tracking-wide mt-0.5">
-              FD:10 | GB:15 | GL:20 | DS:25
+              FD:{rates.FD} | GB:{rates.GB} | GL:{rates.GL} | DS:{rates.DS}
             </div>
           </div>
         </div>
@@ -136,7 +148,6 @@ export default function TrackerTab() {
       <div className="bg-[#1e293b] border border-slate-700 rounded-2xl p-5 shadow-lg space-y-5">
         <h2 className="text-lg font-bold text-white">मैनुअल एंट्री</h2>
         
-        {/* Date Field */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-400">तारीख (Date)</label>
           <div className="relative">
@@ -150,7 +161,6 @@ export default function TrackerTab() {
           </div>
         </div>
 
-        {/* Played / No Play Toggle */}
         <div className="grid grid-cols-2 gap-3">
           <button 
             onClick={() => setIsPlayed(true)}
@@ -166,7 +176,6 @@ export default function TrackerTab() {
           </button>
         </div>
 
-        {/* Status / Location Dropdown */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-400">स्टेटस / कहाँ पास हुआ?</label>
           <select
@@ -184,7 +193,6 @@ export default function TrackerTab() {
           </select>
         </div>
 
-        {/* Save Button */}
         <button 
           onClick={handleSaveData}
           className="w-full bg-teal-400 hover:bg-teal-500 text-slate-900 font-bold py-3.5 rounded-xl transition-colors shadow-md"

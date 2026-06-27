@@ -1,33 +1,40 @@
-import { getTrackerEntries } from './storage';
+import { getTrackerEntries, getInitialCapital } from './storage';
 
 export function calculateLedger() {
   const entries = getTrackerEntries();
   const sortedEntries = [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   
-  // Excel Sheet Constants
-  const TOTAL_CAPITAL = 15000;
-  const INITIAL_EMERGENCY = 12900;
-  const INITIAL_POCKET = 2100;
-  const WIN_MULTIPLIER = 90; // शीट के नियम "भाव x 90" के अनुसार 
+  // Storage से आपका डाला हुआ बजट उठाएगा 
+  const TOTAL_CAPITAL = getInitialCapital();
+  
+  // 15000 के गुणांक में बजट सेट (जैसे 30000 पर 2 गुना, 45000 पर 3 गुना)
+  const baseMultiplier = Math.max(1, Math.floor(TOTAL_CAPITAL / 15000));
 
-  let currentPocket = INITIAL_POCKET;      // नया खेलने का पैसा
-  let currentSafeFund = INITIAL_EMERGENCY; // नया इमरजेंसी फंड
-  let bankAccum = 0;                       // बैंक में जमा (50% मुनाफे का)
+  const INITIAL_EMERGENCY = 12900 * baseMultiplier;
+  const INITIAL_POCKET = 2100 * baseMultiplier;
+  const WIN_MULTIPLIER = 90; 
+
+  let currentPocket = INITIAL_POCKET;      
+  let currentSafeFund = INITIAL_EMERGENCY; 
+  let bankAccum = 0;                       
   
   const history: any[] = [];
 
-  // Default rates for empty states
-  let currentRates = { FD: 10, GB: 15, GL: 20, DS: 25 };
+  let currentRates = { 
+    FD: 10 * baseMultiplier, 
+    GB: 15 * baseMultiplier, 
+    GL: 20 * baseMultiplier, 
+    DS: 25 * baseMultiplier 
+  };
   let currentDailyLimit = INITIAL_POCKET;
 
   for (let i = 0; i < sortedEntries.length; i++) {
     const entry = sortedEntries[i];
     
-    // आज का कुल फंड (Excel Col 15: कुल फंड)
     const currentTotalCash = currentPocket + currentSafeFund + bankAccum;
     
-    // डायनामिक रेट मल्टीप्लायर (Excel: MAX(1, INT(Total/15000)))
-    const multiplier = Math.max(1, Math.floor(currentTotalCash / 15000));
+    // डायनामिक रेट: अगर प्रॉफिट से टोटल कैश 15k के अगले लेवल पर गया तो भी रेट बढ़ेंगे
+    const multiplier = Math.max(baseMultiplier, Math.floor(currentTotalCash / 15000));
     
     currentRates = { 
       FD: 10 * multiplier, 
@@ -36,10 +43,8 @@ export function calculateLedger() {
       DS: 25 * multiplier 
     };
     
-    // आज की कुल लिमिट (Max Risk)
     currentDailyLimit = (currentRates.FD + currentRates.GB + currentRates.GL + currentRates.DS) * 30;
 
-    // अगर No-Play है या पेंडिंग है तो कोई खर्च/मुनाफा नहीं
     if (!entry.isPlay || entry.passLocation === 'PENDING' || entry.passLocation === 'पेंडिंग (रिजल्ट की प्रतीक्षा)') {
       history.push({
         ...entry,
@@ -52,15 +57,13 @@ export function calculateLedger() {
       continue;
     }
 
-    // असली खर्च (Cost x 30): जहां पास हुआ, वहीं तक का खर्च लगेगा (Excel Col 10)
     let cost = 0;
     if (entry.passLocation === 'FD') cost = currentRates.FD * 30;
     else if (entry.passLocation === 'GB') cost = (currentRates.FD + currentRates.GB) * 30;
     else if (entry.passLocation === 'GL') cost = (currentRates.FD + currentRates.GB + currentRates.GL) * 30;
     else if (entry.passLocation === 'DS') cost = currentDailyLimit;
-    else cost = currentDailyLimit; // FAIL (पूरा खर्च लगेगा)
+    else cost = currentDailyLimit; 
 
-    // कुल वापसी (Auto Win ₹) (Excel Col 4)
     let grossReturn = 0;
     if (entry.passLocation !== 'FAIL' && entry.passLocation !== 'PENDING' && entry.passLocation !== 'पेंडिंग (रिजल्ट की प्रतीक्षा)') {
       if (entry.passLocation === 'FD') grossReturn = currentRates.FD * WIN_MULTIPLIER;
@@ -69,23 +72,17 @@ export function calculateLedger() {
       if (entry.passLocation === 'DS') grossReturn = currentRates.DS * WIN_MULTIPLIER;
     }
     
-    // शुद्ध मुनाफा (Net PnL) (Excel Col 11)
     const netProfit = grossReturn - cost;
-    
-    // बैंक में जमा 50% (Excel Col 12)
     const bankShare = netProfit > 0 ? Math.floor(netProfit * 0.5) : 0;
     bankAccum += bankShare;
 
-    // नया खेलने का पैसा (Temp Pocket calculation before shortfall)
     const tempPocket = currentPocket + (netProfit > 0 ? (netProfit - bankShare) : netProfit);
 
-    // शॉर्टफॉल चेक: अगर पॉकेट में लिमिट से कम पैसा है, तो सेफ फंड से निकालेंगे (Excel Col 13 & 14)
     let shortfall = 0;
     if (tempPocket < currentDailyLimit) {
       shortfall = currentDailyLimit - tempPocket;
     }
 
-    // फाइनल अपडेट
     currentPocket = tempPocket + shortfall;
     currentSafeFund = currentSafeFund - shortfall;
     
@@ -106,9 +103,9 @@ export function calculateLedger() {
   return {
     history: history.reverse(),
     finalCash: Math.round(finalTotalCash), 
-    finalBank: Math.round(bankAccum),           // FIX: यहाँ सिर्फ बैंक का पैसा आएगा
+    finalBank: Math.round(bankAccum), 
     currentDailyLimit: currentDailyLimit,
-    emergencyFund: Math.round(currentSafeFund), // FIX: यहाँ सिर्फ इमरजेंसी फंड आएगा
+    emergencyFund: Math.round(currentSafeFund),
     initialCapital: TOTAL_CAPITAL,
     
     currentRates: currentRates,

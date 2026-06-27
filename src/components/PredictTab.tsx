@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Zap, Check, Copy, Send, Target, RefreshCw } from 'lucide-react';
+import { Zap, Check, Copy, Send, Target, RefreshCw, MessageCircle } from 'lucide-react';
 import { PredictionInput, PredictionResult } from '../types';
 import { calculatePrediction } from '../utils/formulas';
 import { calculateLedger } from '../utils/ledger';
@@ -167,6 +167,18 @@ export default function PredictTab() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const shareOnWhatsApp = () => {
+    const jodiLines = allJodis.reduce<string[]>((acc, jodi, i) => {
+      const lineIdx = Math.floor(i / 10);
+      if (!acc[lineIdx]) acc[lineIdx] = '';
+      acc[lineIdx] += (acc[lineIdx] ? '  ' : '') + jodi;
+      return acc;
+    }, []).join('\n');
+    const text = `🎯 *${selectedGame} - प्रेडिक्शन ${inputs.date}*\n\n🎲 *जोड़ियां (${allJodis.length}):*\n${jodiLines}\n\n💰 Rate: *${currentRate} Into*\n💵 Total: *₹${totalAmount}*\n\n_Magic Formula App_`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
   const handleLogToTracker = () => {
     saveTrackerEntry({
       id: inputs.date,
@@ -310,7 +322,7 @@ export default function PredictTab() {
               </div>
 
               <div className="flex flex-col gap-3 pt-2">
-                <button 
+                <button
                   onClick={copyToClipboard}
                   className="w-full bg-[#1F2937] hover:bg-[#374151] border border-slate-700 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
                 >
@@ -318,11 +330,19 @@ export default function PredictTab() {
                   {copied ? 'कॉपी हो गया!' : 'खाईवाल के लिए कॉपी करें'}
                 </button>
 
-                <button 
+                <button
+                  onClick={shareOnWhatsApp}
+                  className="w-full bg-[#25D366] hover:bg-[#1ebe5d] text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  WhatsApp पर शेयर करें ({allJodis.length} जोड़ी)
+                </button>
+
+                <button
                   onClick={handleLogToTracker}
                   className={`w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${
-                    logged 
-                      ? 'bg-green-500/20 text-green-500 border border-green-500/30' 
+                    logged
+                      ? 'bg-green-500/20 text-green-500 border border-green-500/30'
                       : 'bg-teal-400/10 hover:bg-teal-400/20 text-teal-400 border border-teal-400/30'
                   }`}
                 >

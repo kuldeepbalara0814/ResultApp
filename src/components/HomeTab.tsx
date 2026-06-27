@@ -1,13 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Zap, Save, Activity, Key, LogOut, Shield, Users, Cloud, Bot } from 'lucide-react';
-import ChangePasswordModal from './ChangePasswordModal';
+import { Zap, Save, Activity, LogOut, Shield, Users, Cloud, Bot } from 'lucide-react';
 import UserManagementModal from './UserManagementModal';
 import GeminiAssistantModal from './GeminiAssistantModal';
 import { getCurrentUser, getCurrentRole } from '../utils/auth';
 import { getTrackerEntries, downloadBackupData } from '../utils/storage'; 
 
 export default function HomeTab({ setActiveTab, onLogout }: { setActiveTab: (t: string) => void, onLogout: () => void }) {
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showGeminiAssistant, setShowGeminiAssistant] = useState(false);
   
@@ -25,7 +23,7 @@ export default function HomeTab({ setActiveTab, onLogout }: { setActiveTab: (t: 
 
     entries.forEach(e => {
       if (e.isPlay) {
-        if (e.passLocation === 'PENDING') {
+        if (e.passLocation === 'PENDING' || e.passLocation === 'पेंडिंग (रिजल्ट की प्रतीक्षा)') {
           pending++;
         } else if (e.passLocation === 'FAIL') {
           totalFail++;
@@ -44,7 +42,6 @@ export default function HomeTab({ setActiveTab, onLogout }: { setActiveTab: (t: 
     return { successRate, totalPass, totalResolved, pending, l1Pass, l2Pass, l3Pass, totalFail };
   }, []);
 
-  // Naya aur Safe Backup Function
   const handleLocalBackup = () => {
     downloadBackupData();
   };
@@ -100,14 +97,9 @@ export default function HomeTab({ setActiveTab, onLogout }: { setActiveTab: (t: 
               <button onClick={() => setShowUserModal(true)} className="bg-[#111827] hover:bg-[#1F2937] border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center space-y-2 transition-colors">
                 <Users className="w-6 h-6 text-teal-400" /><span className="text-sm font-medium text-white">यूजर मैनेजमेंट</span>
               </button>
-              <button onClick={() => setShowPasswordModal(true)} className="bg-[#111827] hover:bg-[#1F2937] border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center space-y-2 transition-colors">
-                <Key className="w-6 h-6 text-teal-400" /><span className="text-sm font-medium text-white">एडमिन पासवर्ड</span>
-              </button>
               <button onClick={() => setShowGeminiAssistant(true)} className="bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 rounded-xl p-4 flex flex-col items-center justify-center space-y-2 transition-colors">
                 <Bot className="w-6 h-6 text-teal-400" /><span className="text-sm font-medium text-teal-400">Gemini सपोर्ट</span>
               </button>
-              
-              {/* Naya Backup Button jo bina crash ke chalega */}
               <button onClick={handleLocalBackup} className="bg-[#111827] hover:bg-[#1F2937] border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center space-y-2 transition-colors col-span-2">
                 <Cloud className="w-6 h-6 text-blue-400" />
                 <span className="text-sm font-medium text-white">डेटा बैकअप डाउनलोड करें</span>
@@ -117,38 +109,8 @@ export default function HomeTab({ setActiveTab, onLogout }: { setActiveTab: (t: 
         </div>
       </div>
 
-      {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
       {showUserModal && <UserManagementModal isOpen={showUserModal} onClose={() => setShowUserModal(false)} />}
       {showGeminiAssistant && <GeminiAssistantModal onClose={() => setShowGeminiAssistant(false)} />}
-
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">हालिया प्रेडिक्शन</h2>
-          <button onClick={() => setActiveTab('tracker')} className="text-sm text-teal-400 font-medium flex items-center">
-            सभी देखें <Activity className="w-4 h-4 ml-1" />
-          </button>
-        </div>
-        <div className="space-y-3">
-          {getTrackerEntries().filter(e => e.isPlay).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 3).map((item) => (
-            <div key={item.id} className="bg-[#111827] border border-slate-800 rounded-xl p-4 flex items-center justify-between">
-              <div>
-                <div className="font-semibold text-white">{item.date}</div>
-                <div className="text-xs text-slate-400 mt-1 uppercase">Pass at: {item.passLocation || 'None'}</div>
-              </div>
-              {item.passLocation === 'PENDING' ? (
-                <div className="bg-yellow-500/20 border border-yellow-500/30 text-yellow-500 text-[10px] font-bold px-2 py-1 rounded">पेंडिंग</div>
-              ) : item.passLocation === 'FAIL' ? (
-                <div className="bg-red-500/20 border border-red-500/30 text-red-500 text-[10px] font-bold px-2 py-1 rounded">फेल</div>
-              ) : (
-                <div className="bg-teal-400/20 border border-teal-400/30 text-teal-400 text-[10px] font-bold px-2 py-1 rounded">पास</div>
-              )}
-            </div>
-          ))}
-          {getTrackerEntries().filter(e => e.isPlay).length === 0 && (
-            <div className="text-center text-slate-500 text-sm py-4">अभी कोई प्रेडिक्शन नहीं है</div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

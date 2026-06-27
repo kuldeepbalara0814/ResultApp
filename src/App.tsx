@@ -10,7 +10,6 @@ import TrackerTab from './components/TrackerTab';
 import LoginScreen from './components/LoginScreen';
 
 // Naye Components Import (Jo humne abhi banaye hain)
-import MembershipTab from './components/MembershipTab';
 import KhaiwalTab from './components/KhaiwalTab';
 
 import { logoutUser } from './utils/auth';
@@ -55,7 +54,6 @@ export default function App() {
           {activeTab === 'tracker' && <TrackerTab />}
 
           {/* Naye Tabs (Bilkul Safe Tarike Se Linked) */}
-          {activeTab === 'membership' && <MembershipTab />}
           {activeTab === 'khaiwal' && <KhaiwalTab />}
 
         </div>

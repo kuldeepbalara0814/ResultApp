@@ -12,6 +12,11 @@
     
     <!-- मोबाइल के ऊपर वाले स्टेटस बार का रंग ऐप से मैच करने के लिए -->
     <meta name="theme-color" content="#0f172a" />
+
+    <!-- ⭐️ CACHE BUSTER: यह लाइन ब्राउज़र को हमेशा नया कोड लोड करने के लिए मजबूर करेगी ⭐️ -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
   </head>
   <body>
     <div id="root"></div>

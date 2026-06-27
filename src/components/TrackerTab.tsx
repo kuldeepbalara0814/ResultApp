@@ -1,12 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { Target, Wallet, Landmark, Settings, TrendingUp, Trash2 } from 'lucide-react';
-import { getTrackerEntries, deleteTrackerEntry } from '../utils/storage';
+import { getTrackerEntries, deleteTrackerEntry, saveTrackerEntry } from '../utils/storage';
 import { calculateLedger } from '../utils/ledger';
 
 export default function TrackerTab() {
   const [entries, setEntries] = useState(getTrackerEntries() || []);
   const [capitalInput, setCapitalInput] = useState('15000');
-  const [date, setDate] = useState('27/06/2026');
+  
+  // आज की तारीख डिफ़ॉल्ट सेट करने के लिए
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toLocaleDateString('en-GB'); // DD/MM/YYYY format
+  };
+
+  const [date, setDate] = useState(getTodayDate());
   const [isPlayed, setIsPlayed] = useState(true);
   const [status, setStatus] = useState('PENDING');
 
@@ -15,21 +22,36 @@ export default function TrackerTab() {
     try {
       return calculateLedger() || {};
     } catch (e) {
-      // अगर ledger में कोई एरर हो तो डिफ़ॉल्ट वैल्यू
       return { finalCash: 15000, finalBank: 0, currentDailyLimit: 2100, emergencyFund: 12900, history: [] };
     }
   }, [entries]);
 
   const handleDelete = (id: string) => {
-    if (confirm('क्या आप इसे डिलीट करना चाहते हैं?')) {
+    if (confirm('क्या आप इस एंट्री को डिलीट करना चाहते हैं?')) {
       deleteTrackerEntry(id);
       setEntries(getTrackerEntries());
     }
   };
 
+  // डेटा सेव करने का असली फंक्शन
   const handleSaveData = () => {
-    // TODO: यहाँ डेटा सेव करने का फंक्शन लगेगा
-    alert("अभी सेव बटन अधूरा है क्योंकि storage.ts का सेविंग कोड जुड़ना बाकी है!");
+    if (!date) {
+      alert("कृपया तारीख दर्ज करें!");
+      return;
+    }
+
+    const newEntry = {
+      id: Date.now().toString(),
+      date: date,
+      isPlay: isPlayed,
+      passLocation: isPlayed ? status : 'PENDING'
+    };
+
+    saveTrackerEntry(newEntry);
+    setEntries(getTrackerEntries()); // UI को तुरंत अपडेट करने के लिए
+    
+    // सेव होने के बाद फॉर्म को रीसेट करना
+    setStatus('PENDING');
   };
 
   const currentPocket = ledger.currentDailyLimit || 2100;
@@ -122,6 +144,7 @@ export default function TrackerTab() {
               type="text"
               value={date}
               onChange={(e) => setDate(e.target.value)}
+              placeholder="DD/MM/YYYY"
               className="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-teal-400 appearance-none"
             />
           </div>
@@ -143,7 +166,7 @@ export default function TrackerTab() {
           </button>
         </div>
 
-        {/* Status / Location Dropdown (अहम बदलाव) */}
+        {/* Status / Location Dropdown */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-400">स्टेटस / कहाँ पास हुआ?</label>
           <select

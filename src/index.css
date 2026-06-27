@@ -1,7 +1,20 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
-@import "tailwindcss";
-
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <!-- मोबाइल में असली ऐप जैसा फील देने और स्क्रीन को ज़ूम होने से रोकने के लिए -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Sahil Master System</title>
+    
+    <!-- PWA (Android App) बनाने के लिए Manifest लिंक -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- मोबाइल के ऊपर वाले स्टेटस बार का रंग ऐप से मैच करने के लिए -->
+    <meta name="theme-color" content="#0f172a" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

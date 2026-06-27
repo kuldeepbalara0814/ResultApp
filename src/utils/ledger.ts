@@ -10,11 +10,11 @@ export function calculateLedger() {
   const INITIAL_POCKET = 2100;
   const WIN_MULTIPLIER = 90; // शीट के नियम "भाव x 90" के अनुसार 
 
-  let currentPocket = INITIAL_POCKET;    // नया खेलने का पैसा
+  let currentPocket = INITIAL_POCKET;      // नया खेलने का पैसा
   let currentSafeFund = INITIAL_EMERGENCY; // नया इमरजेंसी फंड
-  let bankAccum = 0;                     // बैंक में जमा (50% मुनाफे का)
+  let bankAccum = 0;                       // बैंक में जमा (50% मुनाफे का)
   
-  const history = [];
+  const history: any[] = [];
 
   // Default rates for empty states
   let currentRates = { FD: 10, GB: 15, GL: 20, DS: 25 };
@@ -39,14 +39,15 @@ export function calculateLedger() {
     // आज की कुल लिमिट (Max Risk)
     currentDailyLimit = (currentRates.FD + currentRates.GB + currentRates.GL + currentRates.DS) * 30;
 
-    if (!entry.isPlay || entry.passLocation === 'PENDING') {
+    // अगर No-Play है या पेंडिंग है तो कोई खर्च/मुनाफा नहीं
+    if (!entry.isPlay || entry.passLocation === 'PENDING' || entry.passLocation === 'पेंडिंग (रिजल्ट की प्रतीक्षा)') {
       history.push({
         ...entry,
         cost: 0,
         grossReturn: 0,
         netProfit: 0,
         runningCash: Math.round(currentTotalCash), 
-        runningBank: Math.round(currentSafeFund + bankAccum)
+        runningBank: Math.round(bankAccum)
       });
       continue;
     }
@@ -61,7 +62,7 @@ export function calculateLedger() {
 
     // कुल वापसी (Auto Win ₹) (Excel Col 4)
     let grossReturn = 0;
-    if (entry.passLocation !== 'FAIL' && entry.passLocation !== 'PENDING') {
+    if (entry.passLocation !== 'FAIL' && entry.passLocation !== 'PENDING' && entry.passLocation !== 'पेंडिंग (रिजल्ट की प्रतीक्षा)') {
       if (entry.passLocation === 'FD') grossReturn = currentRates.FD * WIN_MULTIPLIER;
       if (entry.passLocation === 'GB') grossReturn = currentRates.GB * WIN_MULTIPLIER;
       if (entry.passLocation === 'GL') grossReturn = currentRates.GL * WIN_MULTIPLIER;
@@ -96,7 +97,7 @@ export function calculateLedger() {
       grossReturn,
       netProfit,
       runningCash: Math.round(finalTotalForDay), 
-      runningBank: Math.round(currentSafeFund + bankAccum)
+      runningBank: Math.round(bankAccum)
     });
   }
 
@@ -105,17 +106,17 @@ export function calculateLedger() {
   return {
     history: history.reverse(),
     finalCash: Math.round(finalTotalCash), 
-    finalBank: Math.round(currentSafeFund + bankAccum), 
+    finalBank: Math.round(bankAccum),           // FIX: यहाँ सिर्फ बैंक का पैसा आएगा
     currentDailyLimit: currentDailyLimit,
-    emergencyFund: Math.round(currentSafeFund + bankAccum),
+    emergencyFund: Math.round(currentSafeFund), // FIX: यहाँ सिर्फ इमरजेंसी फंड आएगा
     initialCapital: TOTAL_CAPITAL,
     
     currentRates: currentRates,
     totalDayBet: currentDailyLimit,
     wallet: {
       compound: Math.round(finalTotalCash),
-      emergency: Math.round(currentSafeFund + bankAccum),
-      pocket: Math.round(currentPocket) // नया: जेब का पैसा भी रिटर्न में डाल दिया है
+      emergency: Math.round(currentSafeFund),
+      pocket: Math.round(currentPocket)
     }
   };
 }

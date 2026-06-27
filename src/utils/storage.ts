@@ -23,16 +23,26 @@ export const getResultByDate = (date: string): GameResult | null => {
   return all[date] || null;
 };
 
+// Yahan try-catch lagaya gaya hai taki corrupt data se site crash na ho
 export const getAllResults = (): Record<string, GameResult> => {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored ? JSON.parse(stored) : {};
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    console.error("Error reading results:", error);
+    return {};
+  }
 };
 
 export const getAllResultsSorted = (): GameResult[] => {
-  const all = getAllResults();
-  return Object.values(all).sort((a, b) => {
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
-  });
+  try {
+    const all = getAllResults();
+    return Object.values(all).sort((a, b) => {
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
+  } catch (error) {
+    return [];
+  }
 };
 
 export const clearResults = () => {
@@ -40,7 +50,6 @@ export const clearResults = () => {
 };
 
 // Tracker Functions
-
 export const setInitialCapital = (amount: number) => {
   localStorage.setItem(INITIAL_CAPITAL_KEY, amount.toString());
 };
@@ -61,13 +70,19 @@ export const saveTrackerEntry = (entry: TrackerEntry) => {
   localStorage.setItem(TRACKER_KEY, JSON.stringify(existing));
 };
 
+// Yahan bhi try-catch lagaya gaya hai
 export const getTrackerEntries = (): TrackerEntry[] => {
-  const stored = localStorage.getItem(TRACKER_KEY);
-  if (!stored) return [];
-  const entries: TrackerEntry[] = JSON.parse(stored);
-  return entries.sort((a, b) => {
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
-  });
+  try {
+    const stored = localStorage.getItem(TRACKER_KEY);
+    if (!stored) return [];
+    const entries: TrackerEntry[] = JSON.parse(stored);
+    return entries.sort((a, b) => {
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
+  } catch (error) {
+    console.error("Error reading tracker:", error);
+    return [];
+  }
 };
 
 export const deleteTrackerEntry = (id: string) => {
@@ -76,23 +91,18 @@ export const deleteTrackerEntry = (id: string) => {
   localStorage.setItem(TRACKER_KEY, JSON.stringify(updated));
 };
 
-// ==========================================
-// [NEW] BACKUP DOWNLOAD FEATURE
-// ==========================================
+// Backup Feature
 export const downloadBackupData = () => {
   try {
-    // 1. सारा सेव किया हुआ डेटा निकालें (Results, Tracker, aur Capital)
     const results = getAllResults();
     const tracker = getTrackerEntries();
     const initialCapital = getInitialCapital();
 
-    // अगर कोई भी डेटा मौजूद नहीं है, तो एरर दिखाएं
     if (Object.keys(results).length === 0 && tracker.length === 0) {
       alert("बैकअप के लिए अभी कोई डेटा मौजूद नहीं है!");
       return false;
     }
 
-    // 2. पूरे डेटा को एक ऑब्जेक्ट में पैक करें
     const backupData = {
       results,
       tracker,
@@ -100,24 +110,18 @@ export const downloadBackupData = () => {
       backupDate: new Date().toISOString()
     };
 
-    // 3. डेटा को JSON (फाइल) फॉर्मेट में बदलें
     const jsonData = JSON.stringify(backupData, null, 2);
-    
-    // 4. एक डाउनलोड करने योग्य फाइल (Blob) बनाएं
     const blob = new Blob([jsonData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     
-    // 5. फाइल का नाम आज की तारीख के साथ सेट करें
     const today = new Date().toISOString().split('T')[0];
     link.download = `Sahil_Master_Backup_${today}.json`;
     
-    // 6. डाउनलोड स्टार्ट करें
     link.href = url;
     document.body.appendChild(link);
     link.click();
     
-    // 7. मेमोरी साफ़ करें (Cleanup)
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     

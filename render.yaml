@@ -1,0 +1,10 @@
+# Exported from Render on 2026-06-27T19:29:26Z
+version: "1"
+services:
+- type: web
+  name: ResultApp
+  runtime: static
+  repo: https://github.com/kuldeepbalara0814/ResultApp
+  buildCommand: npm install; npm run build
+  staticPublishPath: dist
+  autoDeployTrigger: commit

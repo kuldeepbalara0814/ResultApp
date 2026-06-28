@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, ArrowRight, User, Users, KeyRound, ArrowLeft } from 'lucide-react';
-import { checkPassword, loginUser, checkUserLogin } from '../utils/auth';
+import { checkAdminPassword, updateAdminPassword, loginUser, checkUserLogin } from '../utils/auth';
 
 export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const [loginMode, setLoginMode] = useState<'guest' | 'user' | 'admin'>('guest');
@@ -10,10 +10,8 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   
-  // पासवर्ड बदलने वाले मोड के लिए स्टेट
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // मोड बदलते समय सब कुछ रिसेट करने के लिए
   const handleModeChange = (mode: 'guest' | 'user' | 'admin') => {
     setLoginMode(mode);
     setErrorMsg('');
@@ -24,16 +22,14 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
     setIsChangingPassword(false);
   };
 
-  // -----------------------------------------------------
-  // 1. लॉगिन करने का फंक्शन (पुराना वाला सुरक्षित है)
-  // -----------------------------------------------------
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
     
     if (loginMode === 'admin') {
-      if (checkPassword(password)) {
+      const isValid = await checkAdminPassword(password);
+      if (isValid) {
         loginUser('Admin', 'admin');
         onLogin();
       } else {
@@ -65,9 +61,6 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
     }
   };
 
-  // -----------------------------------------------------
-  // 2. पासवर्ड बदलने का नया फंक्शन
-  // -----------------------------------------------------
   const handleChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -83,9 +76,9 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
     }
 
     if (loginMode === 'admin') {
-      if (checkPassword(password)) {
-        // एडमिन का पासवर्ड अपडेट करें (Local Storage / Firebase Point 9)
-        localStorage.setItem('adminPassword', newPassword); 
+      const isValid = await checkAdminPassword(password);
+      if (isValid) {
+        await updateAdminPassword(newPassword);
         setSuccessMsg('एडमिन पासवर्ड सफलतापूर्वक बदल गया है! कृपया नए पासवर्ड से लॉगिन करें।');
         setTimeout(() => { setIsChangingPassword(false); setPassword(''); setNewPassword(''); setSuccessMsg(''); }, 2000);
       } else {
@@ -98,7 +91,7 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
       }
       const status = await checkUserLogin(userName.trim(), password.trim());
       if (status === true) {
-        // यूज़र का पासवर्ड अपडेट करें (Local Storage Backup for now)
+        // Users ka password local storage me backup ke liye (jab tak DB poora setup nahi hota)
         const usersStr = localStorage.getItem('users');
         if (usersStr) {
           let users = JSON.parse(usersStr);
@@ -118,12 +111,9 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
 
   return (
     <div className="min-h-screen bg-[#0B1120] flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
-      {/* Background Decor */}
       <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-teal-400/5 rounded-full blur-3xl"></div>
       
       <div className="w-full max-w-sm z-10 space-y-6">
-        
-        {/* Toggle Buttons */}
         {!isChangingPassword && (
           <div className="bg-[#111827] border border-slate-800 rounded-2xl p-1 flex">
             <button 
@@ -151,8 +141,6 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
         )}
 
         <div className="bg-[#111827] border border-slate-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-          
-          {/* Change Password Back Button */}
           {isChangingPassword && (
             <button 
               onClick={() => { setIsChangingPassword(false); setErrorMsg(''); setSuccessMsg(''); setPassword(''); setNewPassword(''); }}
@@ -185,8 +173,6 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
           </p>
           
           <form onSubmit={isChangingPassword ? handleChangePasswordSubmit : handleLoginSubmit} className="space-y-4">
-            
-            {/* User Name Input (Not for Admin) */}
             {loginMode !== 'admin' && (
               <div>
                 <input 
@@ -200,7 +186,6 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
               </div>
             )}
             
-            {/* Password Input */}
             {loginMode !== 'guest' && (
               <div>
                 <input 
@@ -213,7 +198,6 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
               </div>
             )}
 
-            {/* New Password Input (Only in Change Mode) */}
             {isChangingPassword && loginMode !== 'guest' && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                 <input 
@@ -226,7 +210,6 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
               </div>
             )}
 
-            {/* Messages */}
             {errorMsg && <p className="text-red-500 text-xs text-center mt-2 animate-pulse">{errorMsg}</p>}
             {successMsg && <p className="text-teal-400 text-xs text-center mt-2 font-bold">{successMsg}</p>}
             
@@ -239,7 +222,6 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
             </button>
           </form>
 
-          {/* Change Password Link for Admin and User */}
           {!isChangingPassword && loginMode !== 'guest' && (
             <div className="mt-6 text-center">
               <button 
@@ -250,7 +232,6 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
               </button>
             </div>
           )}
-          
         </div>
       </div>
     </div>

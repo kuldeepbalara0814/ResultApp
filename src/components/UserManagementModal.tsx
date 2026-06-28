@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserPlus, Users, Trash2, ShieldOff, ShieldCheck, KeyRound, Check } from 'lucide-react';
-import { AppUser, getUsers, addUser, toggleUserAccess, deleteUser } from '../utils/auth';
+import { AppUser, getUsers, addUser, toggleUserAccess, deleteUser, updateUserPassword } from '../utils/auth';
 
 interface UserManagementModalProps {
   isOpen: boolean;
@@ -14,7 +14,6 @@ export default function UserManagementModal({ isOpen, onClose }: UserManagementM
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // पासवर्ड रीसेट करने के लिए स्टेट
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editedPassword, setEditedPassword] = useState('');
 
@@ -71,24 +70,15 @@ export default function UserManagementModal({ isOpen, onClose }: UserManagementM
     }
   };
 
-  // एडमिन द्वारा यूज़र का पासवर्ड बदलने का फंक्शन
   const handleSavePassword = async (id: string) => {
     if (!editedPassword.trim()) {
       alert("पासवर्ड खाली नहीं हो सकता!");
       return;
     }
     try {
-      // अभी के लिए लोकल स्टोरेज अपडेट कर रहे हैं (Point 9 में इसे Firebase से जोड़ेंगे)
-      const usersStr = localStorage.getItem('users');
-      if (usersStr) {
-        let localUsers = JSON.parse(usersStr);
-        const uIndex = localUsers.findIndex((u: any) => u.id === id);
-        if (uIndex > -1) {
-          localUsers[uIndex].password = editedPassword.trim();
-          localStorage.setItem('users', JSON.stringify(localUsers));
-        }
-      }
-      await fetchUsers(); // लिस्ट को रिफ्रेश करना
+      // Direct Firebase pe update call
+      await updateUserPassword(id, editedPassword.trim());
+      await fetchUsers(); 
       setEditingUserId(null);
       setEditedPassword('');
     } catch (err: any) {
@@ -112,7 +102,6 @@ export default function UserManagementModal({ isOpen, onClose }: UserManagementM
         </div>
 
         <div className="p-5 space-y-6">
-          {/* Add User Form */}
           <form onSubmit={handleAddUser} className="space-y-4 bg-[#13151E] p-4 rounded-2xl border border-slate-800">
             <h3 className="text-sm font-medium text-slate-300">नया यूजर बनाएं</h3>
             
@@ -144,7 +133,6 @@ export default function UserManagementModal({ isOpen, onClose }: UserManagementM
             </button>
           </form>
 
-          {/* User List */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-slate-300 flex items-center justify-between">
               <span>सभी यूजर्स</span>
@@ -161,7 +149,6 @@ export default function UserManagementModal({ isOpen, onClose }: UserManagementM
                       <div className="flex-1 pr-2">
                         <span className="text-white font-medium capitalize text-sm">{user.username}</span>
                         
-                        {/* Password Display / Edit Section */}
                         {editingUserId === user.id ? (
                           <div className="flex items-center gap-2 mt-1.5 bg-[#1C1F2D] p-1 rounded-lg border border-teal-500/30">
                             <input
@@ -182,7 +169,7 @@ export default function UserManagementModal({ isOpen, onClose }: UserManagementM
                           <div className="text-xs text-slate-500 font-mono mt-0.5 flex items-center gap-2">
                             <span>पासवर्ड: <span className="text-slate-300">{user.password}</span></span>
                             <button 
-                              onClick={() => { setEditingUserId(user.id); setEditedPassword(user.password); }} 
+                              onClick={() => { setEditingUserId(user.id); setEditedPassword(user.password || ''); }} 
                               className="text-teal-400/60 hover:text-teal-400 transition-colors" 
                               title="पासवर्ड बदलें"
                             >

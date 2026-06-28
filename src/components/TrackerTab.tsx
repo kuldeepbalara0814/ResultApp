@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react';
-import { Target, Wallet, Landmark, Settings, TrendingUp, Trash2, Download } from 'lucide-react';
-import { getTrackerEntries, deleteTrackerEntry, saveTrackerEntry, getInitialCapital, setInitialCapital } from '../utils/storage';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Target, Wallet, Landmark, Settings, TrendingUp, Trash2, Download, RefreshCw } from 'lucide-react';
+import { getTrackerEntries, deleteTrackerEntry, saveTrackerEntry, getInitialCapital, setInitialCapital, syncDataFromFirebase } from '../utils/storage';
 import { calculateLedger } from '../utils/ledger';
 
 export default function TrackerTab() {
   const [entries, setEntries] = useState(getTrackerEntries() || []);
   const [capitalInput, setCapitalInput] = useState(getInitialCapital().toString());
+  const [isSyncing, setIsSyncing] = useState(false);
   
   const getTodayDate = () => {
     const today = new Date();
@@ -16,6 +17,20 @@ export default function TrackerTab() {
   const [isPlayed, setIsPlayed] = useState(true);
   const [status, setStatus] = useState('PENDING');
 
+  // Firebase से लाइव डेटा रिफ्रेश करने के लिए
+  const refreshData = async () => {
+    setIsSyncing(true);
+    await syncDataFromFirebase();
+    setEntries(getTrackerEntries());
+    setCapitalInput(getInitialCapital().toString());
+    setIsSyncing(false);
+  };
+
+  // पेज लोड होते ही एक बार Firebase से डेटा ले आएँ
+  useEffect(() => {
+    refreshData();
+  }, []);
+
   const ledger = useMemo(() => {
     try {
       return calculateLedger() || {};
@@ -24,26 +39,26 @@ export default function TrackerTab() {
     }
   }, [entries, capitalInput]);
 
-  const handleDelete = (id: string) => {
-    if (confirm('क्या आप इस एंट्री को डिलीट करना चाहते हैं?')) {
-      deleteTrackerEntry(id);
+  const handleDelete = async (id: string) => {
+    if (window.confirm('क्या आप इस एंट्री को डिलीट करना चाहते हैं?')) {
+      await deleteTrackerEntry(id); // Firebase से डिलीट
       setEntries(getTrackerEntries());
     }
   };
 
-  const handleSaveCapital = () => {
+  const handleSaveCapital = async () => {
     const newCap = parseFloat(capitalInput);
     if (isNaN(newCap) || newCap < 15000) {
       alert("कम से कम 15000 रुपये का बजट होना चाहिए!");
       setCapitalInput(getInitialCapital().toString());
       return;
     }
-    setInitialCapital(newCap);
+    await setInitialCapital(newCap); // Firebase पर सेव
     setEntries([...getTrackerEntries()]); 
     alert("नया कैपिटल सेव हो गया है! बेस रेट्स और लिमिट अपडेट कर दी गई हैं।");
   };
 
-  const handleSaveData = () => {
+  const handleSaveData = async () => {
     if (!date) {
       alert("कृपया तारीख दर्ज करें!");
       return;
@@ -56,19 +71,17 @@ export default function TrackerTab() {
       passLocation: isPlayed ? status : 'PENDING'
     };
 
-    saveTrackerEntry(newEntry);
+    await saveTrackerEntry(newEntry); // Firebase पर लाइव सेव
     setEntries(getTrackerEntries()); 
     setStatus('PENDING');
   };
 
-  // ⭐️ EXCEL DOWNLOAD FUNCTION ⭐️
   const handleExportExcel = () => {
     if (!ledger.history || ledger.history.length === 0) {
       alert("डाउनलोड करने के लिए अभी कोई डेटा मौजूद नहीं है!");
       return;
     }
 
-    // एक्सेल के 15 कॉलम (आपकी शीट के अनुसार)
     const headers = [
       "तारीख (Date)", "दिन (Play/No-Play)", "कहाँ पास हुआ? (Result)", "कुल वापसी (Auto Win ₹)",
       "आज की कुल लिमिट (Max Risk)", "FD भाव (Into ₹)", "GB भाव (Into ₹)", "GL भाव (Into ₹)", "DS भाव (Into ₹)",
@@ -76,7 +89,6 @@ export default function TrackerTab() {
       "नया खेलने का पैसा (New Pocket)", "नया इमरजेंसी फंड (Safe Fund)", "कुल फंड (Total Cash)", "लगातार फेल"
     ];
 
-    // हिस्ट्री को वापस सीधे क्रम में करना
     const excelData = [...ledger.history].reverse().map((row: any) => [
       row.date, row.isPlay, row.passLocation, row.grossReturn,
       row.dailyLimit, row.rateFD, row.rateGB, row.rateGL, row.rateDS,
@@ -112,7 +124,9 @@ export default function TrackerTab() {
         <h1 className="text-xl font-bold text-teal-400 flex items-center gap-2">
           <Target className="w-6 h-6" /> Risk Management
         </h1>
-        <Settings className="w-5 h-5 text-slate-400 cursor-pointer hover:text-white" />
+        <button onClick={refreshData} disabled={isSyncing} className={`p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white transition ${isSyncing ? 'opacity-50' : ''}`}>
+          <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       <div className="space-y-2">
@@ -209,7 +223,6 @@ export default function TrackerTab() {
         </button>
       </div>
 
-      {/* ⭐️ HISTORY HEADER WITH EXCEL BUTTON ⭐️ */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">Ledger History</h2>

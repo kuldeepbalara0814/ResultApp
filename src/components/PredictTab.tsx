@@ -128,7 +128,7 @@ export default function PredictTab() {
         }
       }
 
-      // असली फॉर्मूले से प्रेडिक्शन निकालना
+      // असली फॉर्मूले से प्रेडिक्शन निकालना (यह 100% सुरक्षित है)
       let res = calculatePrediction(
         inputs, 
         selectedFormulas, 
@@ -140,11 +140,12 @@ export default function PredictTab() {
       );
       
       // ==========================================
-      // गेस्ट (Guest) यूज़र के लिए डमी (Fake) डेटा लॉजिक
+      // गेस्ट (Guest) यूज़र के लिए डमी (Fake) डेटा लॉजिक फिक्स
       // ==========================================
-      const userRole = localStorage.getItem('userRole') || 'guest';
+      const userRole = sessionStorage.getItem('sahil_master_current_role') || 'guest';
+      const isGuestUser = userRole !== 'admin' && userRole !== 'user';
       
-      if (userRole === 'guest') {
+      if (isGuestUser) {
         res = {
           l1: ['01', '02', '03', '04'],
           l2: ['05', '06', '07', '08', '09', '10', '11', '12', '13', '14'],

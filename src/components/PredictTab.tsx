@@ -73,25 +73,6 @@ export default function PredictTab() {
         if (r.gl) pastMurda.push(r.gl); if (r.ds) pastMurda.push(r.ds);
       });
 
-      const past4DaysMurda: string[] = [];
-      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 4).forEach(r => {
-        if (r.fd) past4DaysMurda.push(r.fd); if (r.gb) past4DaysMurda.push(r.gb);
-        if (r.gl) past4DaysMurda.push(r.gl); if (r.ds) past4DaysMurda.push(r.ds);
-      });
-
-      const past10DaysNums: string[] = [];
-      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 10).forEach(r => {
-        if (r.fd) past10DaysNums.push(r.fd); if (r.gb) past10DaysNums.push(r.gb);
-        if (r.gl) past10DaysNums.push(r.gl); if (r.ds) past10DaysNums.push(r.ds);
-      });
-
-      // 15 दिनों का डेटा (नये अलर्ट और स्कोर के लिए)
-      const past15DaysNums: string[] = [];
-      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 15).forEach(r => {
-        if (r.fd) past15DaysNums.push(r.fd); if (r.gb) past15DaysNums.push(r.gb);
-        if (r.gl) past15DaysNums.push(r.gl); if (r.ds) past15DaysNums.push(r.ds);
-      });
-
       const currentYm = inputs.date.substring(0, 7);
       const currentMonthNums: string[] = [];
       pastResults.filter(r => r.date.startsWith(currentYm)).forEach(r => {
@@ -114,10 +95,42 @@ export default function PredictTab() {
         }
       }
 
+      // ===== नया फॉर्मूला: Cross Month Family Check (Month Shift) =====
+      const getTargetDates = (baseDateStr: string, monthsBack: number) => {
+        const [y, m, d] = baseDateStr.split('-').map(Number);
+        const dates: string[] = [];
+        for (let i = 0; i < 3; i++) {
+          // JS महीने 0-indexed होते हैं, इसलिए m - 1
+          const dateObj = new Date(y, m - 1 - monthsBack, d - i);
+          const yyyy = dateObj.getFullYear();
+          const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const dd = String(dateObj.getDate()).padStart(2, '0');
+          dates.push(`${yyyy}-${mm}-${dd}`);
+        }
+        return dates;
+      };
+
+      const m1Dates = getTargetDates(inputs.date, 1);
+      const m2Dates = getTargetDates(inputs.date, 2);
+
+      const pastMonth1Nums: string[] = [];
+      const pastMonth2Nums: string[] = [];
+
+      pastResults.forEach(r => {
+        if (m1Dates.includes(r.date)) {
+          if (r.fd) pastMonth1Nums.push(r.fd); if (r.gb) pastMonth1Nums.push(r.gb);
+          if (r.gl) pastMonth1Nums.push(r.gl); if (r.ds) pastMonth1Nums.push(r.ds);
+        }
+        if (m2Dates.includes(r.date)) {
+          if (r.fd) pastMonth2Nums.push(r.fd); if (r.gb) pastMonth2Nums.push(r.gb);
+          if (r.gl) pastMonth2Nums.push(r.gl); if (r.ds) pastMonth2Nums.push(r.ds);
+        }
+      });
+
       // बाहरी फाइल (formulas.ts) से कैलकुलेशन कॉल की गई
       let res = calculatePrediction(
         inputs, selectedFormulas, pastMurda, currentMonthNums, 
-        todaysRes.slice(0, 4), past4DaysMurda, past10DaysNums, past15DaysNums
+        todaysRes.slice(0, 4), pastMonth1Nums, pastMonth2Nums
       );
       
       const userRole = sessionStorage.getItem('sahil_master_current_role') || 'guest';
@@ -159,10 +172,10 @@ export default function PredictTab() {
   };
 
   return (
-    <div className="p-4 space-y-6 pb-24">
+    <div className="max-w-2xl mx-auto p-4 space-y-6 pb-24">
       <h1 className="text-xl font-bold text-teal-400 mb-2">आज की प्रेडिक्शन</h1>
 
-      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-6">
+      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-6 shadow-md">
         <div className="flex items-center justify-between">
           <h2 className="text-white font-semibold">नंबर दर्ज करें</h2>
           <div className="flex bg-[#0B1120] rounded-lg p-1 border border-slate-800">
@@ -221,7 +234,7 @@ export default function PredictTab() {
         )}
       </div>
 
-      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-5">
+      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-5 shadow-md">
         <h2 className="text-white font-semibold">फॉर्मूला चुनें</h2>
         
         <div className="grid grid-cols-2 gap-4">
@@ -257,18 +270,6 @@ export default function PredictTab() {
       {result && (
         <div className="space-y-6 mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h2 className="text-2xl font-bold text-teal-400 text-center">प्रेडिक्शन का रिजल्ट</h2>
-          
-          {/* === 15 दिन बंद घर का अलर्ट बॉक्स === */}
-          {result.alerts && result.alerts.length > 0 && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-              {result.alerts.map((msg, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-red-400 font-bold text-sm mb-2 last:mb-0">
-                  <span className="animate-pulse mt-0.5">🔥</span> 
-                  <span>{msg}</span>
-                </div>
-              ))}
-            </div>
-          )}
 
           <div className="bg-gradient-to-b from-[#374151] to-[#111827] border border-slate-700 rounded-2xl p-5 shadow-xl">
             <h3 className="text-white font-semibold mb-4 flex items-center gap-2">

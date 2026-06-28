@@ -35,7 +35,8 @@ export default function ResultTab() {
     setInputs(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSave = () => {
+  // Firebase Hybrid Sync के लिए async/await लगाया गया है ताकि चेन न टूटे
+  const handleSave = async () => {
     const resultToSave: GameResult = {
       date,
       fd: inputs.fd,
@@ -43,13 +44,15 @@ export default function ResultTab() {
       gl: inputs.gl,
       ds: inputs.ds
     };
-    saveResult(resultToSave);
+    
+    await saveResult(resultToSave); // इंतज़ार करेगा जब तक डेटा सेफ न हो जाए
     
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 2000);
   };
 
-  const handleBulkImport = () => {
+  // Bulk Import के लिए भी async/await लगाया गया है
+  const handleBulkImport = async () => {
     if (!bulkText.trim()) return;
     
     const lines = bulkText.split('\n');
@@ -80,7 +83,7 @@ export default function ResultTab() {
     }
     
     if (newResults.length > 0) {
-      saveMultipleResults(newResults);
+      await saveMultipleResults(newResults); // Firebase पर एक साथ पूरा बल्क सेव करेगा
       setBulkSuccess(`सफलतापूर्वक ${imported} दिन का रिज़ल्ट इंपोर्ट हो गया!`);
       setBulkText('');
       
@@ -126,12 +129,12 @@ export default function ResultTab() {
           <h2 className="text-white font-medium">3 महीने का रिज़ल्ट पेस्ट करें (Bulk Import)</h2>
           <p className="text-xs text-slate-400">
             फॉर्मेट: YYYY-MM-DD | FD | GB | GL | DS<br/>
-            उदाहरण: 2024-04-25 | 45 | 67 | 89 | 12
+            उदाहरण: 2026-03-06 | 36 | 02 | 45 | 38
           </p>
           <textarea 
             value={bulkText}
             onChange={(e) => setBulkText(e.target.value)}
-            placeholder="2024-04-25 | 45 | 67 | 89 | 12&#10;2024-04-26 | 10 | 20 | 30 | 40"
+            placeholder="2026-03-06 | 36 | 02 | 45 | 38&#10;2026-03-07 | 62 | 60 | 22 | 45"
             className="w-full h-32 bg-[#0B1120] border border-slate-700 rounded-lg p-3 text-sm text-white font-mono focus:outline-none focus:border-teal-400"
           />
           <button 
@@ -246,4 +249,4 @@ export default function ResultTab() {
       </div>
     </div>
   );
-      }
+}

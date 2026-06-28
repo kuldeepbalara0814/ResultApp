@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, UserPlus, Users, Trash2, ShieldOff, ShieldCheck } from 'lucide-react';
+import { X, UserPlus, Users, Trash2, ShieldOff, ShieldCheck, KeyRound, Check } from 'lucide-react';
 import { AppUser, getUsers, addUser, toggleUserAccess, deleteUser } from '../utils/auth';
 
 interface UserManagementModalProps {
@@ -14,6 +14,10 @@ export default function UserManagementModal({ isOpen, onClose }: UserManagementM
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // पासवर्ड रीसेट करने के लिए स्टेट
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editedPassword, setEditedPassword] = useState('');
+
   const fetchUsers = async () => {
     setIsLoading(true);
     const data = await getUsers();
@@ -27,6 +31,7 @@ export default function UserManagementModal({ isOpen, onClose }: UserManagementM
       setError('');
       setNewUsername('');
       setNewPassword('');
+      setEditingUserId(null);
     }
   }, [isOpen]);
 
@@ -63,6 +68,31 @@ export default function UserManagementModal({ isOpen, onClose }: UserManagementM
     if (window.confirm('क्या आप वाकई इस यूजर को डिलीट करना चाहते हैं?')) {
       await deleteUser(id);
       await fetchUsers();
+    }
+  };
+
+  // एडमिन द्वारा यूज़र का पासवर्ड बदलने का फंक्शन
+  const handleSavePassword = async (id: string) => {
+    if (!editedPassword.trim()) {
+      alert("पासवर्ड खाली नहीं हो सकता!");
+      return;
+    }
+    try {
+      // अभी के लिए लोकल स्टोरेज अपडेट कर रहे हैं (Point 9 में इसे Firebase से जोड़ेंगे)
+      const usersStr = localStorage.getItem('users');
+      if (usersStr) {
+        let localUsers = JSON.parse(usersStr);
+        const uIndex = localUsers.findIndex((u: any) => u.id === id);
+        if (uIndex > -1) {
+          localUsers[uIndex].password = editedPassword.trim();
+          localStorage.setItem('users', JSON.stringify(localUsers));
+        }
+      }
+      await fetchUsers(); // लिस्ट को रिफ्रेश करना
+      setEditingUserId(null);
+      setEditedPassword('');
+    } catch (err: any) {
+      setError('पासवर्ड अपडेट करने में एरर आया');
     }
   };
 
@@ -121,18 +151,45 @@ export default function UserManagementModal({ isOpen, onClose }: UserManagementM
               <span className="text-xs bg-slate-800 px-2 py-1 rounded-full">{users.length}</span>
             </h3>
             
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
               {users.length === 0 ? (
                 <p className="text-center text-slate-500 text-sm py-4">कोई यूजर नहीं है</p>
               ) : (
                 users.map(user => (
-                  <div key={user.id} className="bg-[#13151E] border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+                  <div key={user.id} className="bg-[#13151E] border border-slate-800 rounded-xl p-3 flex flex-col gap-2 transition hover:border-slate-700">
                     <div className="flex items-center justify-between">
-                      <div>
+                      <div className="flex-1 pr-2">
                         <span className="text-white font-medium capitalize text-sm">{user.username}</span>
-                        <div className="text-xs text-slate-500 font-mono mt-0.5">
-                          पासवर्ड: <span className="text-slate-300">{user.password}</span>
-                        </div>
+                        
+                        {/* Password Display / Edit Section */}
+                        {editingUserId === user.id ? (
+                          <div className="flex items-center gap-2 mt-1.5 bg-[#1C1F2D] p-1 rounded-lg border border-teal-500/30">
+                            <input
+                              type="text"
+                              value={editedPassword}
+                              onChange={(e) => setEditedPassword(e.target.value)}
+                              className="bg-transparent border-none text-xs text-white focus:outline-none w-full px-1"
+                              placeholder="नया पासवर्ड"
+                            />
+                            <button onClick={() => handleSavePassword(user.id)} className="p-1 bg-teal-500/20 text-teal-400 hover:bg-teal-500/40 rounded transition">
+                              <Check className="w-3 h-3" />
+                            </button>
+                            <button onClick={() => setEditingUserId(null)} className="p-1 bg-red-500/10 text-red-400 hover:bg-red-500/30 rounded transition">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-slate-500 font-mono mt-0.5 flex items-center gap-2">
+                            <span>पासवर्ड: <span className="text-slate-300">{user.password}</span></span>
+                            <button 
+                              onClick={() => { setEditingUserId(user.id); setEditedPassword(user.password); }} 
+                              className="text-teal-400/60 hover:text-teal-400 transition-colors" 
+                              title="पासवर्ड बदलें"
+                            >
+                              <KeyRound className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                       
                       <div className="flex items-center gap-1">
@@ -170,4 +227,4 @@ export default function UserManagementModal({ isOpen, onClose }: UserManagementM
       </div>
     </div>
   );
-                        }
+}

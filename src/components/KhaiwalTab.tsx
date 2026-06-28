@@ -1,31 +1,100 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const KhaiwalTab = () => {
-  // 30 जोड़ी लिखने के लिए स्टेट (आपका पुराना लॉजिक सुरक्षित है)
   const [jodiText, setJodiText] = useState("");
-  
-  // गेम सेलेक्ट करने के लिए स्टेट (FD, GB, GL, DS)
   const [selectedGame, setSelectedGame] = useState("FD");
   
-  // यहाँ अपना WhatsApp नंबर लिखें
-  const phoneNumber = "919876543210"; 
+  // खाईवाल का नंबर और एडिट स्टेट
+  const [khaiwalNumber, setKhaiwalNumber] = useState("");
+  const [isEditingNumber, setIsEditingNumber] = useState(false);
+
+  // प्रति जोड़ी कितने रुपये (डिफ़ॉल्ट 10 रुपये)
+  const [amountPerJodi, setAmountPerJodi] = useState<number>(10);
+
+  // एक्सेल रिपोर्ट के लिए तारीख (Dates)
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  // पेज लोड होने पर सेव किया हुआ नंबर निकालना
+  useEffect(() => {
+    const savedNumber = localStorage.getItem("khaiwalNumber");
+    if (savedNumber) {
+      setKhaiwalNumber(savedNumber);
+    } else {
+      setIsEditingNumber(true); // अगर नंबर नहीं है तो एडिट मोड खोलें
+    }
+  }, []);
+
+  // नंबर सेव करने का फंक्शन
+  const handleSaveNumber = () => {
+    if (khaiwalNumber.length < 10) {
+      alert("कृपया सही मोबाइल नंबर दर्ज करें!");
+      return;
+    }
+    localStorage.setItem("khaiwalNumber", khaiwalNumber);
+    setIsEditingNumber(false);
+    alert("खाईवाल का नंबर सुरक्षित (Save) हो गया है!");
+  };
 
   // WhatsApp पर भेजने का फंक्शन
   const handleWhatsAppClick = () => {
+    if (!khaiwalNumber) {
+      alert("कृपया पहले खाईवाल का व्हाट्सएप नंबर सेव करें!");
+      return;
+    }
     if (!jodiText.trim()) {
-      alert("कृपया पहले बॉक्स में अपनी 30 जोड़ी लिखें या Generate करें!");
+      alert("कृपया पहले नीचे दिए गए बटन से 30 जोड़ी Generate करें!");
       return;
     }
 
-    const message = `नमस्ते, मैं ${selectedGame} गेम खेलना चाहता/चाहती हूँ।\n\nये रही मेरी आज की 30 जोड़ियाँ:\n\n${jodiText}`;
-    const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    const totalAmount = 30 * amountPerJodi; // कुल राशि का हिसाब
+    const message = `नमस्ते, मैं ${selectedGame} गेम खेलना चाहता/चाहती हूँ।\n\nये रही मेरी आज की 30 जोड़ियाँ:\n${jodiText}\n\nप्रति जोड़ी: ₹${amountPerJodi}\nकुल राशि (Total Amount): ₹${totalAmount}`;
+    
+    // व्हाट्सएप लिंक (बिना API के)
+    const formattedNumber = khaiwalNumber.replace(/\D/g, ''); // फालतू स्पेस हटाना
+    const url = `https://wa.me/91${formattedNumber}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
   };
 
-  // यहाँ आपका असली फॉर्मूला जुड़ेगा
+  // 30 जोड़ी ऑटो-फिल करने का फंक्शन
   const handleGenerateClick = () => {
-    alert("यहाँ आपका असली फ़ॉर्मूला कनेक्ट होगा! जो अपने आप 30 जोड़ी निकालकर बॉक्स में भर देगा।");
-    // भविष्य में हम यहाँ लिखेंगे: setJodiText(yourFormulaResult);
+    // हम मान कर चल रहे हैं कि PredictTab में बनी 30 जोड़ियाँ localStorage में "lastPrediction" नाम से सेव होंगी
+    const savedJodis = localStorage.getItem("lastPrediction");
+    
+    if (savedJodis) {
+      try {
+        const jodisArr = JSON.parse(savedJodis); // JSON से Array बनाना
+        if (Array.isArray(jodisArr) && jodisArr.length > 0) {
+          setJodiText(jodisArr.join(", ")); // कॉमा लगाकर टेक्स्ट बॉक्स में भरना
+          return;
+        }
+      } catch (e) {
+        console.error("जोड़ी निकालने में गलती हुई:", e);
+      }
+    }
+    
+    alert("अभी कोई नई प्रेडिक्शन नहीं मिली है! कृपया पहले 'आज की प्रेडिक्शन' टैब में जाकर जोड़ियाँ निकालें।");
+  };
+
+  // एक्सेल (CSV) डाउनलोड करने का फंक्शन
+  const handleDownloadExcel = () => {
+    if (!startDate || !endDate) {
+      alert("कृपया शुरुआत और अंत की तारीख चुनें!");
+      return;
+    }
+
+    // यह अभी डमी डेटा है, बाद में इसे हम Firebase या Ledger से कनेक्ट करेंगे (Point 9 के समय)
+    const csvContent = "data:text/csv;charset=utf-8,तारीख (Date),गेम (Game),जोड़ी (Jodis),अमाउंट (Amount),स्टेटस (Status)\n"
+      + `${startDate},FD,"12, 14, 15...",300,Pending\n`
+      + `${endDate},GB,"22, 24, 25...",300,Pass\n`;
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Khaiwal_Report_${startDate}_to_${endDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -37,9 +106,33 @@ const KhaiwalTab = () => {
         <p className="text-slate-400 text-sm">30 जोड़ी खाईवाल को भेजें</p>
       </div>
 
-      {/* Trusted VIP Khaiwal Card (Peacock Theme) */}
+      {/* खाईवाल नंबर सेव करने का सेक्शन */}
+      <div className="bg-[#131C31] rounded-2xl p-4 border border-gray-800">
+        <h3 className="text-slate-300 text-sm mb-3">खाईवाल का व्हाट्सएप नंबर</h3>
+        <div className="flex gap-2">
+          <span className="bg-[#1E293B] text-slate-400 p-3 rounded-xl border border-gray-700">+91</span>
+          <input
+            type="tel"
+            disabled={!isEditingNumber}
+            value={khaiwalNumber}
+            onChange={(e) => setKhaiwalNumber(e.target.value)}
+            placeholder="10 अंकों का मोबाइल नंबर"
+            className="flex-1 bg-[#0B1120] text-teal-400 border border-gray-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-teal-500 font-bold tracking-widest"
+          />
+          {isEditingNumber ? (
+            <button onClick={handleSaveNumber} className="bg-teal-500 hover:bg-teal-600 text-white px-4 rounded-xl font-bold transition">
+              सेव
+            </button>
+          ) : (
+            <button onClick={() => setIsEditingNumber(true)} className="bg-gray-700 hover:bg-gray-600 text-white px-4 rounded-xl font-bold transition">
+              बदलें
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Trusted VIP Khaiwal Card */}
       <div className="bg-[#0f9d58] rounded-2xl p-5 shadow-lg relative overflow-hidden">
-        {/* Card Header */}
         <div className="flex justify-between items-center mb-5">
           <div className="flex items-center gap-2">
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -47,12 +140,9 @@ const KhaiwalTab = () => {
             </svg>
             <h2 className="text-white font-bold text-lg">Trusted VIP Khaiwal</h2>
           </div>
-          <span className="bg-white/20 text-white text-xs px-2 py-1 rounded-md font-medium">
-            Verified
-          </span>
+          <span className="bg-white/20 text-white text-xs px-2 py-1 rounded-md font-medium">Verified</span>
         </div>
 
-        {/* Rates Grid */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-black/20 rounded-xl p-3 text-center">
             <p className="text-teal-100 text-xs mb-1">Jodi Rate</p>
@@ -64,38 +154,24 @@ const KhaiwalTab = () => {
           </div>
         </div>
 
-        <p className="text-teal-50 text-xs mb-4 text-center">
-          Sabse tez payment, 100% bharosemand aur safe.
-        </p>
-
         {/* WhatsApp & Play Now Buttons */}
         <div className="grid grid-cols-2 gap-3">
-          <button 
-            onClick={handleWhatsAppClick}
-            className="flex items-center justify-center gap-2 bg-white text-[#0f9d58] font-bold py-2.5 rounded-xl hover:bg-gray-100 transition"
-          >
+          <button onClick={handleWhatsAppClick} className="flex items-center justify-center gap-2 bg-white text-[#0f9d58] font-bold py-2.5 rounded-xl hover:bg-gray-100 transition">
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
             </svg>
             WhatsApp
           </button>
-          <button 
-            onClick={handleWhatsAppClick}
-            className="flex items-center justify-center gap-2 bg-[#0B1120]/40 text-white font-bold py-2.5 rounded-xl hover:bg-[#0B1120]/60 transition border border-white/20"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+          <button onClick={handleWhatsAppClick} className="flex items-center justify-center gap-2 bg-[#0B1120]/40 text-white font-bold py-2.5 rounded-xl hover:bg-[#0B1120]/60 transition border border-white/20">
             Play Now
           </button>
         </div>
       </div>
 
-      {/* Game Selection (खेल चुनें) */}
+      {/* Game Selection & Amount */}
       <div className="bg-[#131C31] rounded-2xl p-4 border border-gray-800">
-        <h3 className="text-slate-300 text-sm mb-3">खेल चुनें</h3>
-        <div className="grid grid-cols-4 gap-2">
+        <h3 className="text-slate-300 text-sm mb-3">गेम और अमाउंट चुनें</h3>
+        <div className="grid grid-cols-4 gap-2 mb-4">
           {['FD', 'GB', 'GL', 'DS'].map((game) => (
             <button
               key={game}
@@ -110,29 +186,60 @@ const KhaiwalTab = () => {
             </button>
           ))}
         </div>
+        
+        <div className="flex items-center justify-between bg-[#0B1120] p-3 rounded-xl border border-gray-700">
+          <span className="text-slate-400 text-sm">प्रति जोड़ी लगाएं:</span>
+          <div className="flex items-center gap-2">
+            <span className="text-teal-400 font-bold">₹</span>
+            <input
+              type="number"
+              value={amountPerJodi}
+              onChange={(e) => setAmountPerJodi(Number(e.target.value) || 0)}
+              className="w-20 bg-transparent text-white font-bold outline-none text-right"
+              min="5"
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Text Area (Dark Theme me styled) */}
+      {/* 30 Jodi Text Area */}
       <div className="bg-[#131C31] rounded-2xl p-4 border border-gray-800">
         <textarea
-          className="w-full bg-[#0B1120] text-teal-400 border border-gray-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none font-mono text-center"
-          rows={5}
+          className="w-full bg-[#0B1120] text-teal-400 border border-gray-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none font-mono text-center mb-3"
+          rows={4}
           placeholder="आपकी 30 जोड़ी यहाँ आएँगी..."
           value={jodiText}
           onChange={(e) => setJodiText(e.target.value)}
         ></textarea>
+        
+        <button
+          onClick={handleGenerateClick}
+          className="w-full flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-xl shadow-[0_4px_14px_0_rgba(20,184,166,0.39)] transition duration-300"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          30 जोड़ी यहाँ लाएँ (Auto-fill)
+        </button>
       </div>
 
-      {/* Generate Button (Bottom) */}
-      <button
-        onClick={handleGenerateClick}
-        className="w-full flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-600 text-white font-bold py-4 px-4 rounded-xl shadow-[0_4px_14px_0_rgba(20,184,166,0.39)] transition duration-300"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-        </svg>
-        30 जोड़ी Generate करें
-      </button>
+      {/* Excel Report Download Section */}
+      <div className="bg-[#131C31] rounded-2xl p-4 border border-gray-800">
+        <h3 className="text-slate-300 text-sm mb-3">खाईवाल एक्सेल रिपोर्ट (Excel/CSV)</h3>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="text-xs text-slate-500 mb-1 block">शुरुआत (From Date)</label>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-[#0B1120] text-sm text-slate-300 border border-gray-700 rounded-lg p-2 outline-none focus:border-teal-500" />
+          </div>
+          <div>
+            <label className="text-xs text-slate-500 mb-1 block">अंत (To Date)</label>
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-[#0B1120] text-sm text-slate-300 border border-gray-700 rounded-lg p-2 outline-none focus:border-teal-500" />
+          </div>
+        </div>
+        <button onClick={handleDownloadExcel} className="w-full bg-[#1E293B] hover:bg-[#2A3B52] text-teal-400 font-bold py-2 rounded-xl border border-teal-500/30 transition">
+          रिपोर्ट डाउनलोड करें
+        </button>
+      </div>
 
     </div>
   );

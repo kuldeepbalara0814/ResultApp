@@ -1,10 +1,12 @@
 import { PredictionInput, PredictionResult, TokariItem } from '../types';
 
+export interface ExtendedPredictionResult extends PredictionResult {
+  alerts?: string[];
+}
+
 const EVERGREEN = ['3', '8', '6', '1', '9', '0', '7', '2'];
 const UNIVERSAL = ['02', '20', '04', '40', '06', '60', '24', '42', '28', '82', '46', '64', '68', '86'];
 const MAGIC = ['12', '23', '84', '96'];
-// JODAS array rakha hai future reference ke liye, but iska filter hata diya gaya hai.
-const JODAS = ['00', '11', '22', '33', '44', '55', '66', '77', '88', '99']; 
 
 const DAY_WISE_FIXED: Record<number, string[]> = {
   0: ['93', '92', '75', '73', '71', '62', '52', '38', '13', '09', '04'],
@@ -119,6 +121,7 @@ const MASTER_SHEET: Record<string, string[]> = {
   '00': ['86', '97', '49', '85', '87', '67', '69', '96', '98', '78', '80', '48', '50', '93', '95'],
 };
 
+// फैमिली निकालने का फंक्शन
 const getFamily = (jodi: string): string[] => {
   const rashiMap: Record<string, string> = {
     '0': '5', '1': '6', '2': '7', '3': '8', '4': '9',
@@ -131,6 +134,10 @@ const getFamily = (jodi: string): string[] => {
   return [a+b, b+a, a+br, br+a, ar+b, b+ar, ar+br, br+ar];
 };
 
+// नया: दाने (Difference) निकालने का फंक्शन
+const getDifference = (num1: string, num2: string) => Math.abs(parseInt(num1) - parseInt(num2));
+const TARGET_DANAY = [1, 2, 3, 10, 20, 30]; // ऑपरेटर का ट्रैप
+
 export const calculatePrediction = (
   inputs: PredictionInput,
   selectedFormulas: string[],
@@ -138,8 +145,9 @@ export const calculatePrediction = (
   currentMonthNums: string[] = [],
   todaysRes: string[] = [],
   past4DaysMurda: string[] = [],
-  past10DaysNums: string[] = []
-): PredictionResult => {
+  past10DaysNums: string[] = [],
+  past15DaysNums: string[] = [] // नया पैरामीटर
+): ExtendedPredictionResult => {
   const dateObj = new Date(inputs.date);
   const jsDay = dateObj.getDay();
   const dayOfMonth = dateObj.getDate();
@@ -149,15 +157,13 @@ export const calculatePrediction = (
 
   // 1. "Atma" (Base Number Collection)
   todaysRes.forEach(r => {
-    // BUG FIX: Removed the '00' to '100' conversion that was causing Master Sheet misses.
-    // Now '0' becomes '00', '8' becomes '08', which correctly matches Master Sheet keys.
     let key = parseInt(r.trim(), 10).toString().padStart(2, '0');
     if (MASTER_SHEET[key]) {
       rawList.push(...MASTER_SHEET[key]);
     }
   });
 
-  // 2. Base Counting (1x, 2x, 4x...)
+  // 2. Base Counting
   const counts: Record<string, number> = {};
   rawList.forEach(num => {
     counts[num] = (counts[num] || 0) + 1;
@@ -170,11 +176,9 @@ export const calculatePrediction = (
   // 3. Scoring all 100 Jodis
   for (let i = 1; i <= 100; i++) {
     const jodi = i === 100 ? '00' : i.toString().padStart(2, '0');
-    
-    // JODAS filter is permanently removed. Jodas will calculate just like normal numbers.
     let score = counts[jodi] || 0; 
 
-    // Baki Formule add honge
+    // पुराने फॉर्मूले
     if (selectedFormulas.includes('6')) {
       if (pastMurda.includes(jodi)) { score += 10; }
       else {
@@ -208,46 +212,73 @@ export const calculatePrediction = (
       }
     }
 
-    // 10 Din ka Gap Rule
     if (past10DaysNums && past10DaysNums.length > 0) {
       const fam = getFamily(jodi);
       const hasAppeared = fam.some(f => past10DaysNums.includes(f));
-      if (!hasAppeared) {
-        score += 2;
+      if (!hasAppeared) score += 2;
+    }
+
+    // ==========================================
+    // 🔴 3 नये मास्टर फॉर्मूले
+    // ==========================================
+
+    // 1. दाने का फॉर्मूला (Difference Trap - 3rd Step)
+    if (past4DaysMurda && past4DaysMurda.length > 0) {
+      let isDanayTrap = false;
+      for (const pastNum of past4DaysMurda) {
+        const diff = getDifference(jodi, pastNum);
+        if (TARGET_DANAY.includes(diff)) {
+          isDanayTrap = true;
+          break;
+        }
       }
+      if (isDanayTrap) score += 2;
+    }
+
+    // 2. 22 तारीख का ट्रिगर (+3 पॉइंट)
+    if (dayOfMonth >= 22 && currentMonthNums && currentMonthNums.length > 0) {
+      const fam = getFamily(jodi);
+      const appearedInMonth = fam.some(f => currentMonthNums.includes(f));
+      if (!appearedInMonth) score += 3;
+    }
+
+    // 3. 15 दिन बंद घर अलर्ट (+2 पॉइंट)
+    if (past15DaysNums && past15DaysNums.length > 0) {
+      const fam = getFamily(jodi);
+      const appearedIn15Days = fam.some(f => past15DaysNums.includes(f));
+      if (!appearedIn15Days) score += 2;
     }
 
     jodiScores[jodi] = score;
   }
 
-  // Top 30 Filter (Total Score ke aadhar par)
   const sortedJodis = Object.keys(jodiScores).sort((a, b) => jodiScores[b] - jodiScores[a]);
   const final30 = sortedJodis.slice(0, 30);
+
+  // अलर्ट मैसेज जनरेट करना (15 दिन बंद फैमिली के लिए)
+  const alertsSet = new Set<string>();
+  final30.forEach(jodi => {
+    const fam = getFamily(jodi);
+    const appearedIn15Days = past15DaysNums ? fam.some(f => past15DaysNums.includes(f)) : true;
+    if (!appearedIn15Days) {
+      const baseFam = Math.min(...fam.map(n => parseInt(n))).toString().padStart(2, '0');
+      alertsSet.add(`⚠️ ${baseFam} की फैमिली 15 दिन से बंद है, आज इसके पूरे चांस हैं!`);
+    }
+  });
 
   const l1 = final30.slice(0, 4);
   const l2 = final30.slice(4, 14);
   const l3 = final30.slice(14, 30);
 
-  // 4. TOKARI COUNT LOGIC - BUG FIX: No more grouping (39/93). Displays straight numbers.
   const tokariItems: TokariItem[] = [];
-
   Object.entries(counts).forEach(([jodi, count]) => {
     if (count > 0) {
-      tokariItems.push({
-        id: jodi,      // Single jodi jese "16", "47"
-        jodis: [jodi], 
-        count: count   // Uski actual master sheet frequency
-      });
+      tokariItems.push({ id: jodi, jodis: [jodi], count: count });
     }
   });
-
-  // Sort descending by count, then sort numerically for a clean look
   tokariItems.sort((a, b) => b.count - a.count || parseInt(a.id) - parseInt(b.id));
 
   return { 
-    l1, 
-    l2, 
-    l3, 
-    tokari: tokariItems 
+    l1, l2, l3, tokari: tokariItems, alerts: Array.from(alertsSet) 
   };
 };

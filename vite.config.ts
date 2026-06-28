@@ -8,25 +8,25 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate', // यह सुनिश्चित करेगा कि ऐप हमेशा अपडेटेड रहे
+      registerType: 'autoUpdate',
       manifest: {
         name: 'Sahil Master App',
         short_name: 'SahilMaster',
         description: 'Risk Management and Ledger App',
         theme_color: '#0f172a',
         background_color: '#0f172a',
-        display: 'standalone', // यह इसे असली ऐप की तरह फुल-स्क्रीन में खोलेगा (बिना ब्राउज़र के)
+        display: 'standalone',
         icons: [
           {
-            src: '/pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
+            src: '/logo.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
             purpose: 'any maskable'
           },
           {
-            src: '/pwa-512x512.png',
+            src: '/logo.svg',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/svg+xml'
           }
         ]
       }

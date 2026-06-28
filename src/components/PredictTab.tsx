@@ -74,12 +74,8 @@ export default function PredictTab() {
     setTimeout(() => {
       const pastResults = getAllResultsSorted();
       
-      // 1. पिछले 3 दिन का डेटा (Murda के लिए)
       const pastMurda: string[] = [];
-      const past3Days = pastResults
-        .filter(r => new Date(r.date) < new Date(inputs.date))
-        .slice(0, 3);
-      
+      const past3Days = pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 3);
       past3Days.forEach(r => {
         if (r.fd) pastMurda.push(r.fd);
         if (r.gb) pastMurda.push(r.gb);
@@ -87,11 +83,8 @@ export default function PredictTab() {
         if (r.ds) pastMurda.push(r.ds);
       });
 
-      // 2. पिछले 4 दिन का डेटा (Logic 3 के लिए)
       const past4DaysMurda: string[] = [];
-      const past4Days = pastResults
-        .filter(r => new Date(r.date) < new Date(inputs.date))
-        .slice(0, 4);
+      const past4Days = pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 4);
       past4Days.forEach(r => {
         if (r.fd) past4DaysMurda.push(r.fd);
         if (r.gb) past4DaysMurda.push(r.gb);
@@ -99,11 +92,8 @@ export default function PredictTab() {
         if (r.ds) past4DaysMurda.push(r.ds);
       });
 
-      // 3. पिछले 10 दिन का डेटा (नए Gap Rule के लिए)
       const past10DaysNums: string[] = [];
-      const past10Days = pastResults
-        .filter(r => new Date(r.date) < new Date(inputs.date))
-        .slice(0, 10);
+      const past10Days = pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 10);
       past10Days.forEach(r => {
         if (r.fd) past10DaysNums.push(r.fd);
         if (r.gb) past10DaysNums.push(r.gb);
@@ -111,7 +101,6 @@ export default function PredictTab() {
         if (r.ds) past10DaysNums.push(r.ds);
       });
 
-      // 4. करेंट मंथ का डेटा
       const currentYm = inputs.date.substring(0, 7);
       const currentMonthNums: string[] = [];
       pastResults.filter(r => r.date.startsWith(currentYm)).forEach(r => {
@@ -121,7 +110,6 @@ export default function PredictTab() {
         if (r.ds) currentMonthNums.push(r.ds);
       });
 
-      // 5. कल के 4 रिज़ल्ट (Atma/Base Score के लिए)
       const todaysRes: string[] = [];
       const userInputs = [inputs.ds, inputs.gl, inputs.gb, inputs.fd].filter(v => v !== '');
       todaysRes.push(...userInputs);
@@ -140,8 +128,8 @@ export default function PredictTab() {
         }
       }
 
-      // अपडेटेड फॉर्मूला कॉल (सारे नए पैरामीटर्स के साथ)
-      const res = calculatePrediction(
+      // असली फॉर्मूले से प्रेडिक्शन निकालना
+      let res = calculatePrediction(
         inputs, 
         selectedFormulas, 
         pastMurda, 
@@ -151,6 +139,24 @@ export default function PredictTab() {
         past10DaysNums
       );
       
+      // ==========================================
+      // गेस्ट (Guest) यूज़र के लिए डमी (Fake) डेटा लॉजिक
+      // ==========================================
+      const userRole = localStorage.getItem('userRole') || 'guest';
+      
+      if (userRole === 'guest') {
+        res = {
+          l1: ['01', '02', '03', '04'],
+          l2: ['05', '06', '07', '08', '09', '10', '11', '12', '13', '14'],
+          l3: ['15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30'],
+          tokari: [] // गेस्ट को टोकरी काउंट्स नहीं दिखेंगे (ताकि भ्रम न हो)
+        };
+      }
+
+      // खाईवाल टैब के ऑटो-फिल के लिए 30 जोड़ियों को सेव करना
+      const final30Jodis = [...res.l1, ...res.l2, ...res.l3];
+      localStorage.setItem("lastPrediction", JSON.stringify(final30Jodis));
+
       setResult(res);
       setIsPredicting(false);
     }, 800);
@@ -375,21 +381,23 @@ export default function PredictTab() {
             </div>
           </div>
 
-          <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5">
-            <h3 className="text-white font-semibold mb-4">टोकरी काउंट्स</h3>
-            <div className="grid grid-cols-4 md:grid-cols-5 gap-3">
-              {result.tokari.map((item, i) => (
-                <div key={i} className="bg-[#374151] rounded-lg p-2 flex flex-col items-center justify-center border border-slate-700/50">
-                  <div className="text-white font-mono font-medium text-sm md:text-base">
-                    {item.id}
+          {result.tokari && result.tokari.length > 0 && (
+            <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5">
+              <h3 className="text-white font-semibold mb-4">टोकरी काउंट्स</h3>
+              <div className="grid grid-cols-4 md:grid-cols-5 gap-3">
+                {result.tokari.map((item, i) => (
+                  <div key={i} className="bg-[#374151] rounded-lg p-2 flex flex-col items-center justify-center border border-slate-700/50">
+                    <div className="text-white font-mono font-medium text-sm md:text-base">
+                      {item.id}
+                    </div>
+                    <div className="text-xs text-slate-400 mt-1">
+                      {item.count}x
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-400 mt-1">
-                    {item.count}x
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

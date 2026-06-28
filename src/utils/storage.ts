@@ -1,21 +1,43 @@
+import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 import { GameResult, TrackerEntry } from '../types';
 
 const STORAGE_KEY = 'sahil_master_results';
 const TRACKER_KEY = 'sahil_master_tracker_v3';
 const INITIAL_CAPITAL_KEY = 'sahil_master_initial_capital';
 
-export const saveResult = (result: GameResult) => {
+// ==========================================
+// 1. RESULTS (प्रेडिक्शन/गेम रिजल्ट) - Hybrid Save
+// ==========================================
+export const saveResult = async (result: GameResult) => {
+  // 1. तुरंत लोकल सेव (ताकि वेबसाइट तेज़ चले)
   const existing = getAllResults();
   existing[result.date] = result;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+
+  // 2. बैकग्राउंड में Firebase पर लाइव सेव
+  try {
+    await setDoc(doc(db, 'results', result.date), result);
+  } catch (error) {
+    console.error("Firebase Results Save Error:", error);
+  }
 };
 
-export const saveMultipleResults = (results: GameResult[]) => {
+export const saveMultipleResults = async (results: GameResult[]) => {
   const existing = getAllResults();
   results.forEach(r => {
     existing[r.date] = r;
   });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+
+  // Firebase Batch Save
+  try {
+    for (const r of results) {
+      await setDoc(doc(db, 'results', r.date), r);
+    }
+  } catch (error) {
+    console.error("Firebase Multiple Results Save Error:", error);
+  }
 };
 
 export const getResultByDate = (date: string): GameResult | null => {
@@ -23,7 +45,6 @@ export const getResultByDate = (date: string): GameResult | null => {
   return all[date] || null;
 };
 
-// Yahan try-catch lagaya gaya hai taki corrupt data se site crash na ho
 export const getAllResults = (): Record<string, GameResult> => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -49,9 +70,17 @@ export const clearResults = () => {
   localStorage.removeItem(STORAGE_KEY);
 };
 
-// Tracker Functions
-export const setInitialCapital = (amount: number) => {
+
+// ==========================================
+// 2. TRACKER & CAPITAL - Hybrid Save
+// ==========================================
+export const setInitialCapital = async (amount: number) => {
   localStorage.setItem(INITIAL_CAPITAL_KEY, amount.toString());
+  try {
+    await setDoc(doc(db, 'settings', 'capital'), { amount });
+  } catch (error) {
+    console.error("Firebase Capital Save Error:", error);
+  }
 };
 
 export const getInitialCapital = (): number => {
@@ -59,7 +88,7 @@ export const getInitialCapital = (): number => {
   return stored ? parseFloat(stored) : 15000;
 };
 
-export const saveTrackerEntry = (entry: TrackerEntry) => {
+export const saveTrackerEntry = async (entry: TrackerEntry) => {
   const existing = getTrackerEntries();
   const index = existing.findIndex(e => e.id === entry.id);
   if (index >= 0) {
@@ -68,9 +97,15 @@ export const saveTrackerEntry = (entry: TrackerEntry) => {
     existing.push(entry);
   }
   localStorage.setItem(TRACKER_KEY, JSON.stringify(existing));
+
+  // Firebase पर लाइव सेव
+  try {
+    await setDoc(doc(db, 'tracker', entry.id), entry);
+  } catch (error) {
+    console.error("Firebase Tracker Save Error:", error);
+  }
 };
 
-// Yahan bhi try-catch lagaya gaya hai
 export const getTrackerEntries = (): TrackerEntry[] => {
   try {
     const stored = localStorage.getItem(TRACKER_KEY);
@@ -85,13 +120,65 @@ export const getTrackerEntries = (): TrackerEntry[] => {
   }
 };
 
-export const deleteTrackerEntry = (id: string) => {
+export const deleteTrackerEntry = async (id: string) => {
   const existing = getTrackerEntries();
   const updated = existing.filter(entry => entry.id !== id);
   localStorage.setItem(TRACKER_KEY, JSON.stringify(updated));
+
+  // Firebase से लाइव डिलीट
+  try {
+    await deleteDoc(doc(db, 'tracker', id));
+  } catch (error) {
+    console.error("Firebase Tracker Delete Error:", error);
+  }
 };
 
-// Backup Feature
+
+// ==========================================
+// 3. FIREBASE SYNC (जब भी कोई नया फ़ोन/ब्राउज़र खुलेगा, यह डेटा वापस ले आएगा)
+// ==========================================
+export const syncDataFromFirebase = async () => {
+  try {
+    // 1. Results Sync
+    const resultsSnap = await getDocs(collection(db, 'results'));
+    const resultsData: Record<string, GameResult> = {};
+    resultsSnap.forEach(doc => {
+      resultsData[doc.id] = doc.data() as GameResult;
+    });
+    if (Object.keys(resultsData).length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(resultsData));
+    }
+
+    // 2. Tracker Sync
+    const trackerSnap = await getDocs(collection(db, 'tracker'));
+    const trackerData: TrackerEntry[] = [];
+    trackerSnap.forEach(doc => {
+      trackerData.push(doc.data() as TrackerEntry);
+    });
+    if (trackerData.length > 0) {
+      localStorage.setItem(TRACKER_KEY, JSON.stringify(trackerData));
+    }
+
+    // 3. Capital Sync
+    const capitalSnap = await getDocs(collection(db, 'settings'));
+    capitalSnap.forEach(doc => {
+      if (doc.id === 'capital') {
+        localStorage.setItem(INITIAL_CAPITAL_KEY, doc.data().amount.toString());
+      }
+    });
+
+    console.log("Firebase Data Synced Successfully!");
+    return true;
+  } catch (error) {
+    console.error("Error syncing from Firebase:", error);
+    return false;
+  }
+};
+
+
+// ==========================================
+// 4. BACKUP FEATURE (JSON Download)
+// ==========================================
 export const downloadBackupData = () => {
   try {
     const results = getAllResults();

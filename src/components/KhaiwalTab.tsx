@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { calculateLedger } from '../utils/ledger'; // <-- लेजर से ऑटोमेटिक रेट उठाने के लिए
 
 const KhaiwalTab = () => {
   const [jodiText, setJodiText] = useState("");
@@ -24,6 +25,28 @@ const KhaiwalTab = () => {
       setIsEditingNumber(true); // अगर नंबर नहीं है तो एडिट मोड खोलें
     }
   }, []);
+
+  // --- नया कोड: लेजर (Ledger) से ऑटो-रेट सेट करना ---
+  useEffect(() => {
+    let rates = { FD: 10, GB: 15, GL: 20, DS: 25 }; // बेस रेट्स
+    
+    try {
+      const ledgerData = calculateLedger();
+      if (ledgerData && ledgerData.currentRates) {
+        rates = ledgerData.currentRates; // अगर पैसा बढ़ा है, तो लेजर वाले नए रेट्स ले लेगा
+      }
+    } catch (error) {
+      console.log("Ledger error:", error);
+    }
+
+    // गेम बदलते ही ऑटोमेटिक सही अमाउंट सेट करना
+    if (selectedGame === 'FD') setAmountPerJodi(rates.FD);
+    else if (selectedGame === 'GB') setAmountPerJodi(rates.GB);
+    else if (selectedGame === 'GL') setAmountPerJodi(rates.GL);
+    else if (selectedGame === 'DS') setAmountPerJodi(rates.DS);
+    
+  }, [selectedGame]); // जब भी selectedGame बदलेगा, यह रन होगा
+  // ------------------------------------------------
 
   // नंबर सेव करने का फंक्शन
   const handleSaveNumber = () => {
@@ -83,7 +106,7 @@ const KhaiwalTab = () => {
       return;
     }
 
-    // यह अभी डमी डेटा है, बाद में इसे हम Firebase या Ledger से कनेक्ट करेंगे (Point 9 के समय)
+    // यह अभी डमी डेटा है, बाद में इसे हम Firebase या Ledger से कनेक्ट करेंगे
     const csvContent = "data:text/csv;charset=utf-8,तारीख (Date),गेम (Game),जोड़ी (Jodis),अमाउंट (Amount),स्टेटस (Status)\n"
       + `${startDate},FD,"12, 14, 15...",300,Pending\n`
       + `${endDate},GB,"22, 24, 25...",300,Pass\n`;

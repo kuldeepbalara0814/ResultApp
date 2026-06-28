@@ -15,14 +15,13 @@ import MembershipTab from './components/MembershipTab';
 
 import { logoutUser } from './utils/auth';
 
-// --- नया: टारगेट और ग्राफ लाइन (Target Trend Bar) ---
+// --- टारगेट और ग्राफ लाइन (Target Trend Bar) ---
 const TargetTracker = () => {
     const [progress, setProgress] = useState(50);
     const [status, setStatus] = useState("बेस लेवल (शुरुआत)");
     const [isProfit, setIsProfit] = useState(true);
 
     useEffect(() => {
-        // यह लोकल डेटा को पढ़कर अपने आप ग्राफ को आगे-पीछे करेगा
         try {
             const history = JSON.parse(localStorage.getItem('ledgerHistory') || '[]');
             const wins = history.filter((h: any) => h.status === 'pass').length;
@@ -33,11 +32,11 @@ const TargetTracker = () => {
                 setStatus("बेस लेवल (शुरुआत)");
                 setIsProfit(true);
             } else if (wins > losses) {
-                setProgress(Math.min(100, 50 + (wins - losses) * 10)); // जीत पर ग्राफ आगे बढ़ेगा
+                setProgress(Math.min(100, 50 + (wins - losses) * 10)); 
                 setStatus("टारगेट से ऊपर (Profit 🚀)");
                 setIsProfit(true);
             } else {
-                setProgress(Math.max(10, 50 - (losses - wins) * 10)); // हार पर ग्राफ पीछे जाएगा
+                setProgress(Math.max(10, 50 - (losses - wins) * 10)); 
                 setStatus("रिकवरी मोड (Loss 📉)");
                 setIsProfit(false);
             }
@@ -54,7 +53,6 @@ const TargetTracker = () => {
                     {status}
                 </span>
             </div>
-            {/* ग्राफ प्रोग्रेस बार */}
             <div className="w-full bg-[#0B1120] rounded-full h-2 overflow-hidden border border-gray-800 shadow-inner">
                 <div
                     className={`h-2 rounded-full transition-all duration-1000 ${isProfit ? 'bg-teal-500 shadow-[0_0_10px_rgba(20,184,166,0.8)]' : 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]'}`}
@@ -73,7 +71,7 @@ const DiaryTab = () => {
         localStorage.setItem('diary_notes', e.target.value);
     };
     return (
-        <div className="p-4 mb-24 animate-fade-in">
+        <div className="p-4 mb-24 animate-in fade-in zoom-in duration-500">
             <h2 className="text-2xl font-bold text-white mb-4">डायरी (Notes)</h2>
             <textarea
                 value={notes}
@@ -110,7 +108,7 @@ const CalculatorTab = () => {
     const clearAll = () => { setCalc(''); setResult(''); };
 
     return (
-        <div className="p-4 mb-24 animate-fade-in">
+        <div className="p-4 mb-24 animate-in fade-in slide-in-from-bottom-8 duration-500">
             <h2 className="text-2xl font-bold text-white mb-4">कैलकुलेटर</h2>
             <div className="bg-[#131C31] p-4 rounded-3xl border border-gray-700 shadow-xl">
                 <div className="bg-[#0B1120] p-4 rounded-2xl mb-4 text-right overflow-x-auto h-24 flex flex-col justify-end border border-gray-800">
@@ -118,18 +116,18 @@ const CalculatorTab = () => {
                     <div className="text-3xl font-bold text-teal-400 tracking-wider">{calc || '0'}</div>
                 </div>
                 <div className="grid grid-cols-4 gap-3">
-                    <button onClick={clearAll} className="col-span-2 bg-red-500/10 text-red-400 p-4 rounded-2xl font-bold hover:bg-red-500/20 transition">C</button>
-                    <button onClick={deleteLast} className="bg-orange-500/10 text-orange-400 p-4 rounded-2xl font-bold hover:bg-orange-500/20 transition">DEL</button>
-                    <button onClick={() => updateCalc('/')} className="bg-teal-500/10 text-teal-400 p-4 rounded-2xl font-bold hover:bg-teal-500/20 transition">÷</button>
-                    {[7,8,9].map(num => <button key={num} onClick={() => updateCalc(num.toString())} className="bg-[#1E293B] text-white p-4 rounded-2xl font-bold hover:bg-[#2A3B52] transition shadow-sm">{num}</button>)}
-                    <button onClick={() => updateCalc('*')} className="bg-teal-500/10 text-teal-400 p-4 rounded-2xl font-bold hover:bg-teal-500/20 transition">×</button>
-                    {[4,5,6].map(num => <button key={num} onClick={() => updateCalc(num.toString())} className="bg-[#1E293B] text-white p-4 rounded-2xl font-bold hover:bg-[#2A3B52] transition shadow-sm">{num}</button>)}
-                    <button onClick={() => updateCalc('-')} className="bg-teal-500/10 text-teal-400 p-4 rounded-2xl font-bold hover:bg-teal-500/20 transition">-</button>
-                    {[1,2,3].map(num => <button key={num} onClick={() => updateCalc(num.toString())} className="bg-[#1E293B] text-white p-4 rounded-2xl font-bold hover:bg-[#2A3B52] transition shadow-sm">{num}</button>)}
-                    <button onClick={() => updateCalc('+')} className="bg-teal-500/10 text-teal-400 p-4 rounded-2xl font-bold hover:bg-teal-500/20 transition">+</button>
-                    <button onClick={() => updateCalc('.')} className="bg-[#1E293B] text-white p-4 rounded-2xl font-bold hover:bg-[#2A3B52] transition">.</button>
-                    <button onClick={() => updateCalc('0')} className="bg-[#1E293B] text-white p-4 rounded-2xl font-bold hover:bg-[#2A3B52] transition">0</button>
-                    <button onClick={calculate} className="col-span-2 bg-teal-500 text-white p-4 rounded-2xl font-bold hover:bg-teal-600 shadow-[0_0_15px_rgba(20,184,166,0.3)] transition">=</button>
+                    <button onClick={clearAll} className="col-span-2 bg-red-500/10 text-red-400 p-4 rounded-2xl font-bold hover:bg-red-500/20 transition-all active:scale-95">C</button>
+                    <button onClick={deleteLast} className="bg-orange-500/10 text-orange-400 p-4 rounded-2xl font-bold hover:bg-orange-500/20 transition-all active:scale-95">DEL</button>
+                    <button onClick={() => updateCalc('/')} className="bg-teal-500/10 text-teal-400 p-4 rounded-2xl font-bold hover:bg-teal-500/20 transition-all active:scale-95">÷</button>
+                    {[7,8,9].map(num => <button key={num} onClick={() => updateCalc(num.toString())} className="bg-[#1E293B] text-white p-4 rounded-2xl font-bold hover:bg-[#2A3B52] transition-all active:scale-95 shadow-sm">{num}</button>)}
+                    <button onClick={() => updateCalc('*')} className="bg-teal-500/10 text-teal-400 p-4 rounded-2xl font-bold hover:bg-teal-500/20 transition-all active:scale-95">×</button>
+                    {[4,5,6].map(num => <button key={num} onClick={() => updateCalc(num.toString())} className="bg-[#1E293B] text-white p-4 rounded-2xl font-bold hover:bg-[#2A3B52] transition-all active:scale-95 shadow-sm">{num}</button>)}
+                    <button onClick={() => updateCalc('-')} className="bg-teal-500/10 text-teal-400 p-4 rounded-2xl font-bold hover:bg-teal-500/20 transition-all active:scale-95">-</button>
+                    {[1,2,3].map(num => <button key={num} onClick={() => updateCalc(num.toString())} className="bg-[#1E293B] text-white p-4 rounded-2xl font-bold hover:bg-[#2A3B52] transition-all active:scale-95 shadow-sm">{num}</button>)}
+                    <button onClick={() => updateCalc('+')} className="bg-teal-500/10 text-teal-400 p-4 rounded-2xl font-bold hover:bg-teal-500/20 transition-all active:scale-95">+</button>
+                    <button onClick={() => updateCalc('.')} className="bg-[#1E293B] text-white p-4 rounded-2xl font-bold hover:bg-[#2A3B52] transition-all active:scale-95">.</button>
+                    <button onClick={() => updateCalc('0')} className="bg-[#1E293B] text-white p-4 rounded-2xl font-bold hover:bg-[#2A3B52] transition-all active:scale-95">0</button>
+                    <button onClick={calculate} className="col-span-2 bg-teal-500 text-white p-4 rounded-2xl font-bold hover:bg-teal-600 shadow-[0_0_15px_rgba(20,184,166,0.3)] transition-all active:scale-95">=</button>
                 </div>
             </div>
         </div>
@@ -213,11 +211,15 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B1120] text-slate-200 font-sans selection:bg-teal-400/30 flex justify-center">
-      <div className="w-full max-w-md relative min-h-screen bg-[#0B1120] shadow-2xl flex flex-col border-x border-gray-900/50">
+    <div className="min-h-screen bg-[#0B1120] text-slate-200 font-sans selection:bg-teal-400/30 flex justify-center relative overflow-hidden">
+      
+      {/* एनिमेटेड बैकग्राउंड (हल्की चमक) */}
+      <div className="absolute inset-0 bg-gradient-to-br from-teal-900/10 via-[#0B1120] to-blue-900/10 animate-pulse pointer-events-none"></div>
+
+      <div className="w-full max-w-md relative min-h-screen bg-[#0B1120]/95 backdrop-blur-sm shadow-2xl flex flex-col border-x border-gray-900/50">
         
         {/* === TOP HEADER PANEL === */}
-        <div className="bg-[#131C31] px-4 py-3 flex justify-between items-center sticky top-0 z-50">
+        <div className="bg-[#131C31] px-4 py-3 flex justify-between items-center sticky top-0 z-50 shadow-md">
             {/* Live Watch */}
             <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
@@ -230,38 +232,37 @@ export default function App() {
             {/* Top Navigation Icons */}
             <div className="flex items-center gap-2">
                 {deferredPrompt && (
-                    <button onClick={handleInstallClick} className="bg-teal-500/10 text-teal-400 p-2 rounded-xl border border-teal-500/30 hover:bg-teal-500/30 transition">
+                    <button onClick={handleInstallClick} className="bg-teal-500/10 text-teal-400 p-2 rounded-xl border border-teal-500/30 hover:bg-teal-500/30 transition-all hover:scale-105 active:scale-95">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                     </button>
                 )}
-                <button onClick={() => setActiveTab('calculator')} className={`p-2 rounded-xl transition ${activeTab==='calculator' ? 'bg-teal-500 text-white shadow-lg' : 'bg-[#1E293B] text-slate-400 hover:text-white'}`}>
+                <button onClick={() => setActiveTab('calculator')} className={`p-2 rounded-xl transition-all duration-300 ${activeTab==='calculator' ? 'bg-teal-500 text-white shadow-[0_0_15px_rgba(20,184,166,0.5)] scale-105' : 'bg-[#1E293B] text-slate-400 hover:text-white hover:bg-[#2A3B52]'}`}>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                 </button>
-                <button onClick={() => setActiveTab('diary')} className={`p-2 rounded-xl transition ${activeTab==='diary' ? 'bg-teal-500 text-white shadow-lg' : 'bg-[#1E293B] text-slate-400 hover:text-white'}`}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                <button onClick={() => setActiveTab('diary')} className={`p-2 rounded-xl transition-all duration-300 ${activeTab==='diary' ? 'bg-teal-500 text-white shadow-[0_0_15px_rgba(20,184,166,0.5)] scale-105' : 'bg-[#1E293B] text-slate-400 hover:text-white hover:bg-[#2A3B52]'}`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477-4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                 </button>
             </div>
         </div>
 
-        {/* नया टारगेट ग्राफ यहाँ चलेगा */}
         <TargetTracker />
         
-        {/* Main Content Area */}
+        {/* Main Content Area - एनिमेशन के साथ */}
         <div className="overflow-y-auto flex-1 w-full pb-20 p-2 sm:p-4">
-          
-          {/* Purane Tabs */}
-          {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} onLogout={handleLogout} />}
-          {activeTab === 'predict' && <PredictTab />}
-          {activeTab === 'result' && <ResultTab />}
-          {activeTab === 'records' && <RecordsTab setActiveTab={setActiveTab} />}
-          {activeTab === 'tracker' && <TrackerTab />}
-          {activeTab === 'khaiwal' && <KhaiwalTab />}
-          {activeTab === 'membership' && <MembershipTab />}
+          <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Purane Tabs */}
+            {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} onLogout={handleLogout} />}
+            {activeTab === 'predict' && <PredictTab />}
+            {activeTab === 'result' && <ResultTab />}
+            {activeTab === 'records' && <RecordsTab setActiveTab={setActiveTab} />}
+            {activeTab === 'tracker' && <TrackerTab />}
+            {activeTab === 'khaiwal' && <KhaiwalTab />}
+            {activeTab === 'membership' && <MembershipTab />}
 
-          {/* Naye Tabs */}
-          {activeTab === 'calculator' && <CalculatorTab />}
-          {activeTab === 'diary' && <DiaryTab />}
-
+            {/* Naye Tabs */}
+            {activeTab === 'calculator' && <CalculatorTab />}
+            {activeTab === 'diary' && <DiaryTab />}
+          </div>
         </div>
         
         {/* Niche ka Navigation Bar */}

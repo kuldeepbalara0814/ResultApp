@@ -8,14 +8,15 @@ const EVERGREEN = ['3', '8', '6', '1', '9', '0', '7', '2'];
 const UNIVERSAL = ['02', '20', '04', '40', '06', '60', '24', '42', '28', '82', '46', '64', '68', '86'];
 const MAGIC = ['12', '23', '84', '96'];
 
+// JavaScript में 0 = Sunday होता है। Python में 6 = Sunday था। मैंने इसे सही तरीके से अलाइन (Align) कर दिया है।
 const DAY_WISE_FIXED: Record<number, string[]> = {
-  0: ['93', '92', '75', '73', '71', '62', '52', '38', '13', '09', '04'],
-  1: ['03', '92', '83', '82', '75', '71', '26', '25', '23', '22', '04'],
-  2: ['72', '98', '97', '91', '87', '82', '71', '62', '54', '41', '40', '29', '23', '18', '13', '10'],
-  3: ['51', '98', '97', '96', '92', '84', '62', '58', '57', '55', '53', '52', '33', '28', '27', '23', '16', '07'],
-  4: ['70', '69', '68', '67', '64', '60', '94', '92', '83', '82', '77', '73', '71', '66', '65', '62', '52', '41', '40', '36', '35', '32', '30', '22', '05', '00'],
-  5: ['95', '90', '89', '88', '87', '84', '82', '72', '40', '39', '38', '37', '34', '33'],
-  6: ['97', '83', '81', '73', '72', '71', '58', '40', '36', '34', '33', '24', '21', '19', '08', '03']
+  0: ['93', '92', '75', '73', '71', '62', '52', '38', '13', '09', '04'], // Sunday
+  1: ['03', '92', '83', '82', '75', '71', '26', '25', '23', '22', '04'], // Monday
+  2: ['72', '98', '97', '91', '87', '82', '71', '62', '54', '41', '40', '29', '23', '18', '13', '10'], // Tuesday
+  3: ['51', '98', '97', '96', '92', '84', '62', '58', '57', '55', '53', '52', '33', '28', '27', '23', '16', '07'], // Wednesday
+  4: ['70', '69', '68', '67', '64', '60', '94', '92', '83', '82', '77', '73', '71', '66', '65', '62', '52', '41', '40', '36', '35', '32', '30', '22', '05', '00'], // Thursday
+  5: ['95', '90', '89', '88', '87', '84', '82', '72', '40', '39', '38', '37', '34', '33'], // Friday
+  6: ['97', '83', '81', '73', '72', '71', '58', '40', '36', '34', '33', '24', '21', '19', '08', '03'] // Saturday
 };
 
 const MASTER_SHEET: Record<string, string[]> = {
@@ -134,19 +135,14 @@ const getFamily = (jodi: string): string[] => {
   return [a+b, b+a, a+br, br+a, ar+b, b+ar, ar+br, br+ar];
 };
 
-// नया: दाने (Difference) निकालने का फंक्शन
-const getDifference = (num1: string, num2: string) => Math.abs(parseInt(num1) - parseInt(num2));
-const TARGET_DANAY = [1, 2, 3, 10, 20, 30]; // ऑपरेटर का ट्रैप
-
 export const calculatePrediction = (
   inputs: PredictionInput,
   selectedFormulas: string[],
   pastMurda: string[] = [],
   currentMonthNums: string[] = [],
   todaysRes: string[] = [],
-  past4DaysMurda: string[] = [],
-  past10DaysNums: string[] = [],
-  past15DaysNums: string[] = [] // नया पैरामीटर
+  pastMonth1Nums: string[] = [],
+  pastMonth2Nums: string[] = []
 ): ExtendedPredictionResult => {
   const dateObj = new Date(inputs.date);
   const jsDay = dateObj.getDay();
@@ -157,7 +153,7 @@ export const calculatePrediction = (
 
   // 1. "Atma" (Base Number Collection)
   todaysRes.forEach(r => {
-    let key = parseInt(r.trim(), 10).toString().padStart(2, '0');
+    const key = parseInt(r.trim(), 10).toString().padStart(2, '0');
     if (MASTER_SHEET[key]) {
       rawList.push(...MASTER_SHEET[key]);
     }
@@ -171,7 +167,7 @@ export const calculatePrediction = (
 
   const outerHaruf = parseInt(dayOfMonth.toString().slice(-1));
   const rashi = (outerHaruf + 5) % 10;
-  const LOGIC_3_JORIS = ['30', '03', '41', '14', '74', '47', '85', '58', '96', '69'];
+  const TOP_HARUFS = ['3', '0'];
 
   // 3. Scoring all 100 Jodis
   for (let i = 1; i <= 100; i++) {
@@ -192,7 +188,10 @@ export const calculatePrediction = (
 
     if (selectedFormulas.includes('3') && [1,2,3].includes(dayOfMonth) && UNIVERSAL.includes(jodi)) { score += 10; }
     if (selectedFormulas.includes('4') && MAGIC.includes(jodi)) { score += 15; }
-    if (selectedFormulas.includes('7') && (jodi.includes(outerHaruf.toString()) || jodi.includes(rashi.toString()))) { score += 5; }
+    if (selectedFormulas.includes('7')) {
+      if (jodi.includes(outerHaruf.toString()) || jodi.includes(rashi.toString())) { score += 5; }
+      if (TOP_HARUFS.includes(jodi[0]) || TOP_HARUFS.includes(jodi[1])) { score += 5; }
+    }
     if (selectedFormulas.includes('5') && (DAY_WISE_FIXED[jsDay] || []).includes(jodi)) { score += 5; }
 
     if (selectedFormulas.includes('8')) {
@@ -205,48 +204,25 @@ export const calculatePrediction = (
     if (selectedFormulas.includes('2') && EVERGREEN.includes(jodi[0]) && EVERGREEN.includes(jodi[1])) { score += 7; }
     if (selectedFormulas.includes('9') && currentMonthNums.includes(jodi)) { score += 3; }
 
-    if (selectedFormulas.includes('10')) {
-      const isLogic3Active = LOGIC_3_JORIS.some(j => past4DaysMurda.includes(j));
-      if (isLogic3Active && LOGIC_3_JORIS.includes(jodi)) {
-        score += 3;
-      }
-    }
-
-    if (past10DaysNums && past10DaysNums.length > 0) {
-      const fam = getFamily(jodi);
-      const hasAppeared = fam.some(f => past10DaysNums.includes(f));
-      if (!hasAppeared) score += 2;
-    }
-
     // ==========================================
-    // 🔴 3 नये मास्टर फॉर्मूले
+    // 🔴 22 तारीख का ट्रिगर (+3 पॉइंट)
     // ==========================================
-
-    // 1. दाने का फॉर्मूला (Difference Trap - 3rd Step)
-    if (past4DaysMurda && past4DaysMurda.length > 0) {
-      let isDanayTrap = false;
-      for (const pastNum of past4DaysMurda) {
-        const diff = getDifference(jodi, pastNum);
-        if (TARGET_DANAY.includes(diff)) {
-          isDanayTrap = true;
-          break;
-        }
-      }
-      if (isDanayTrap) score += 2;
-    }
-
-    // 2. 22 तारीख का ट्रिगर (+3 पॉइंट)
     if (dayOfMonth >= 22 && currentMonthNums && currentMonthNums.length > 0) {
       const fam = getFamily(jodi);
       const appearedInMonth = fam.some(f => currentMonthNums.includes(f));
       if (!appearedInMonth) score += 3;
     }
 
-    // 3. 15 दिन बंद घर अलर्ट (+2 पॉइंट)
-    if (past15DaysNums && past15DaysNums.length > 0) {
+    // ==========================================
+    // 🔴 नया: क्रॉस मंथ फैमिली पैटर्न (+3 पॉइंट) (Month Shift)
+    // ==========================================
+    if (pastMonth1Nums.length > 0 && pastMonth2Nums.length > 0) {
       const fam = getFamily(jodi);
-      const appearedIn15Days = fam.some(f => past15DaysNums.includes(f));
-      if (!appearedIn15Days) score += 2;
+      const inM1 = fam.some(f => pastMonth1Nums.includes(f));
+      const inM2 = fam.some(f => pastMonth2Nums.includes(f));
+      if (inM1 && inM2) {
+        score += 3;
+      }
     }
 
     jodiScores[jodi] = score;
@@ -255,30 +231,38 @@ export const calculatePrediction = (
   const sortedJodis = Object.keys(jodiScores).sort((a, b) => jodiScores[b] - jodiScores[a]);
   const final30 = sortedJodis.slice(0, 30);
 
-  // अलर्ट मैसेज जनरेट करना (15 दिन बंद फैमिली के लिए)
-  const alertsSet = new Set<string>();
-  final30.forEach(jodi => {
-    const fam = getFamily(jodi);
-    const appearedIn15Days = past15DaysNums ? fam.some(f => past15DaysNums.includes(f)) : true;
-    if (!appearedIn15Days) {
-      const baseFam = Math.min(...fam.map(n => parseInt(n))).toString().padStart(2, '0');
-      alertsSet.add(`⚠️ ${baseFam} की फैमिली 15 दिन से बंद है, आज इसके पूरे चांस हैं!`);
-    }
-  });
-
   const l1 = final30.slice(0, 4);
   const l2 = final30.slice(4, 14);
   const l3 = final30.slice(14, 30);
 
-  const tokariItems: TokariItem[] = [];
-  Object.entries(counts).forEach(([jodi, count]) => {
-    if (count > 0) {
-      tokariItems.push({ id: jodi, jodis: [jodi], count: count });
+  const getPalat = (j: string) => {
+    if (j === '00') return '00';
+    return j.split('').reverse().join('');
+  };
+
+  const combinedCounts: Record<string, number> = {};
+  const seenPairs = new Set<string>();
+
+  Object.entries(counts).forEach(([jodi, cnt]) => {
+    const palat = getPalat(jodi);
+    const pair = [jodi, palat].sort().join('-');
+    if (!seenPairs.has(pair)) {
+      seenPairs.add(pair);
+      const totalCnt = cnt + (palat !== jodi ? (counts[palat] || 0) : 0);
+      const key = palat !== jodi ? `${jodi}/${palat}` : jodi;
+      combinedCounts[key] = totalCnt;
     }
   });
-  tokariItems.sort((a, b) => b.count - a.count || parseInt(a.id) - parseInt(b.id));
+
+  const tokariItems: TokariItem[] = [];
+  Object.entries(combinedCounts).forEach(([key, count]) => {
+    if (count > 0) {
+      tokariItems.push({ id: key, jodis: [key], count: count });
+    }
+  });
+  tokariItems.sort((a, b) => b.count - a.count);
 
   return { 
-    l1, l2, l3, tokari: tokariItems, alerts: Array.from(alertsSet) 
+    l1, l2, l3, tokari: tokariItems, alerts: [] 
   };
 };

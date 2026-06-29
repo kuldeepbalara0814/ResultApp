@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Zap, Check, Copy, Send, Target, RefreshCw } from 'lucide-react';
+import { Zap, Check, Copy, Send, Target, RefreshCw, Shield, Flame, BarChart2 } from 'lucide-react';
 import { PredictionInput } from '../types';
 import { calculatePrediction, ExtendedPredictionResult } from '../utils/formulas';
 import { calculateLedger } from '../utils/ledger';
@@ -14,11 +14,12 @@ const FORMULAS = [
   { id: '7', label: '7 - Haruf' },
   { id: '8', label: '8 - Baki' },
   { id: '9', label: '9 - Month Trend' },
-  { id: '10', label: '10 - Zero/Panja (0/5)' } // 🟢 यहाँ नया बटन ऐड हो गया है
+  { id: '10', label: '10 - Zero/Panja (0/5)' }
 ];
 
 export default function PredictTab() {
   const [inputMode, setInputMode] = useState<'auto' | 'manual'>('auto');
+  const [isProMode, setIsProMode] = useState(false);
   
   const [inputs, setInputs] = useState<PredictionInput>({
     date: new Date().toISOString().split('T')[0],
@@ -28,6 +29,10 @@ export default function PredictTab() {
   const [selectedFormulas, setSelectedFormulas] = useState<string[]>(FORMULAS.map(f => f.id));
   const [result, setResult] = useState<ExtendedPredictionResult | null>(null);
   const [isPredicting, setIsPredicting] = useState(false);
+  
+  // Backtest states
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optimizerMsg, setOptimizerMsg] = useState('');
   
   const [selectedGame, setSelectedGame] = useState<'FD' | 'GB' | 'GL' | 'DS'>('FD');
   const [copied, setCopied] = useState(false);
@@ -59,11 +64,87 @@ export default function PredictTab() {
     );
   };
 
+  const handleBacktest = () => {
+    setIsOptimizing(true);
+    setOptimizerMsg('');
+    setTimeout(() => {
+      const pastResults = getAllResultsSorted();
+      const testDays = pastResults.slice(0, 30);
+      
+      if (testDays.length === 0) {
+        setOptimizerMsg('बैकटेस्ट के लिए पर्याप्त डेटा नहीं है।');
+        setIsOptimizing(false);
+        return;
+      }
+
+      let passCount = 0;
+      let totalTestDays = 0;
+
+      // Filter days that actually have results to test against
+      const validTestDays = testDays.filter(d => d.fd || d.gb || d.gl || d.ds).slice(0, 30);
+
+      validTestDays.forEach((targetDay) => {
+        const idxInAll = pastResults.findIndex(r => r.date === targetDay.date);
+        if (idxInAll === -1) return;
+
+        const historicalPast = pastResults.slice(idxInAll + 1);
+        if (historicalPast.length === 0) return;
+
+        const histMurda: string[] = [];
+        historicalPast.slice(0, 3).forEach(r => {
+          if (r.fd) histMurda.push(r.fd); if (r.gb) histMurda.push(r.gb);
+          if (r.gl) histMurda.push(r.gl); if (r.ds) histMurda.push(r.ds);
+        });
+
+        const histYm = targetDay.date.substring(0, 7);
+        const histMonthNums: string[] = [];
+        historicalPast.filter(r => r.date.startsWith(histYm)).forEach(r => {
+          if (r.fd) histMonthNums.push(r.fd); if (r.gb) histMonthNums.push(r.gb);
+          if (r.gl) histMonthNums.push(r.gl); if (r.ds) histMonthNums.push(r.ds);
+        });
+
+        const histTodaysRes: string[] = [];
+        if (historicalPast[0]) {
+          if (historicalPast[0].ds) histTodaysRes.push(historicalPast[0].ds);
+          if (historicalPast[0].gl) histTodaysRes.push(historicalPast[0].gl);
+          if (historicalPast[0].gb) histTodaysRes.push(historicalPast[0].gb);
+          if (historicalPast[0].fd) histTodaysRes.push(historicalPast[0].fd);
+        }
+
+        const hist20Days: string[] = [];
+        historicalPast.slice(0, 20).forEach(r => {
+          if (r.fd) hist20Days.push(r.fd); if (r.gb) hist20Days.push(r.gb);
+          if (r.gl) hist20Days.push(r.gl); if (r.ds) hist20Days.push(r.ds);
+        });
+
+        const dummyInputs = { date: targetDay.date, fd: '', gb: '', gl: '', ds: '' };
+        
+        const res = calculatePrediction(
+          dummyInputs, selectedFormulas, histMurda, histMonthNums,
+          histTodaysRes, [], [], hist20Days, isProMode
+        );
+
+        const final30 = [...res.l1, ...res.l2, ...res.l3];
+        const hasPass = [targetDay.fd, targetDay.gb, targetDay.gl, targetDay.ds].some(v => v && final30.includes(v));
+
+        if (hasPass) passCount++;
+        totalTestDays++;
+      });
+
+      if (totalTestDays > 0) {
+        const pct = Math.round((passCount / totalTestDays) * 100);
+        setOptimizerMsg(`चुने गए फॉर्मूलों ने पिछले 30 दिनों में ${passCount} दिन (${pct}%) पासिंग दी है!`);
+      }
+      setIsOptimizing(false);
+    }, 600);
+  };
+
   const handlePredict = () => {
     setIsPredicting(true);
     setResult(null);
     setCopied(false);
     setLogged(false);
+    setOptimizerMsg('');
 
     setTimeout(() => {
       const pastResults = getAllResultsSorted();
@@ -95,6 +176,12 @@ export default function PredictTab() {
           todaysRes.push(allPastNums[i]);
         }
       }
+
+      const past20DaysNums: string[] = [];
+      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 20).forEach(r => {
+        if (r.fd) past20DaysNums.push(r.fd); if (r.gb) past20DaysNums.push(r.gb);
+        if (r.gl) past20DaysNums.push(r.gl); if (r.ds) past20DaysNums.push(r.ds);
+      });
 
       const getTargetDates = (baseDateStr: string, monthsBack: number) => {
         const [y, m, d] = baseDateStr.split('-').map(Number);
@@ -128,7 +215,7 @@ export default function PredictTab() {
 
       let res = calculatePrediction(
         inputs, selectedFormulas, pastMurda, currentMonthNums, 
-        todaysRes.slice(0, 4), pastMonth1Nums, pastMonth2Nums
+        todaysRes.slice(0, 4), pastMonth1Nums, pastMonth2Nums, past20DaysNums, isProMode
       );
       
       const userRole = sessionStorage.getItem('sahil_master_current_role') || 'guest';
@@ -171,7 +258,20 @@ export default function PredictTab() {
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-6 pb-24">
-      <h1 className="text-xl font-bold text-teal-400 mb-2">आज की प्रेडिक्शन</h1>
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-xl font-bold text-teal-400">आज की प्रेडिक्शन</h1>
+        <button 
+          onClick={() => setIsProMode(!isProMode)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
+            isProMode 
+              ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' 
+              : 'bg-green-500/10 text-green-400 border-green-500/30'
+          }`}
+        >
+          {isProMode ? <Flame className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+          {isProMode ? 'Pro Mode' : 'Safe Mode'}
+        </button>
+      </div>
 
       <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-6 shadow-md">
         <div className="flex items-center justify-between">
@@ -233,8 +333,24 @@ export default function PredictTab() {
       </div>
 
       <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-5 shadow-md">
-        <h2 className="text-white font-semibold">फॉर्मूला चुनें</h2>
+        <div className="flex items-center justify-between">
+           <h2 className="text-white font-semibold">फॉर्मूला चुनें</h2>
+           <button 
+             onClick={handleBacktest}
+             disabled={isOptimizing}
+             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1F2937] hover:bg-[#374151] rounded-lg text-xs font-medium text-slate-300 transition-colors border border-slate-700 disabled:opacity-50"
+           >
+             <BarChart2 className={`w-3.5 h-3.5 ${isOptimizing ? 'animate-pulse text-teal-400' : ''}`} />
+             {isOptimizing ? 'टेस्टिंग...' : 'बैकटेस्ट'}
+           </button>
+        </div>
         
+        {optimizerMsg && (
+          <div className="bg-teal-400/10 border border-teal-400/30 text-teal-300 text-sm p-3 rounded-lg flex items-center justify-center text-center font-medium animate-in fade-in">
+            {optimizerMsg}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           {FORMULAS.map(formula => {
             const isSelected = selectedFormulas.includes(formula.id);
@@ -262,7 +378,7 @@ export default function PredictTab() {
         className="w-full bg-teal-400 hover:bg-teal-300 text-slate-900 font-bold py-4 rounded-xl flex items-center justify-center space-x-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Zap className={`w-5 h-5 ${isPredicting ? 'animate-pulse' : ''}`} />
-        <span>{isPredicting ? 'प्रेडिक्शन हो रही है...' : 'प्रेडिक्शन निकालें'}</span>
+        <span>{isPredicting ? 'प्रेडिक्शन निकालें' : 'प्रेडिक्शन निकालें'}</span>
       </button>
 
       {result && (

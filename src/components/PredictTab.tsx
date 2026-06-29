@@ -13,7 +13,8 @@ const FORMULAS = [
   { id: '6', label: '6 - Murda' },
   { id: '7', label: '7 - Haruf' },
   { id: '8', label: '8 - Baki' },
-  { id: '9', label: '9 - Month Trend' }
+  { id: '9', label: '9 - Month Trend' },
+  { id: '10', label: '10 - Zero/Panja (0/5)' } // 🟢 यहाँ नया बटन ऐड हो गया है
 ];
 
 export default function PredictTab() {
@@ -95,12 +96,10 @@ export default function PredictTab() {
         }
       }
 
-      // ===== नया फॉर्मूला: Cross Month Family Check (Month Shift) =====
       const getTargetDates = (baseDateStr: string, monthsBack: number) => {
         const [y, m, d] = baseDateStr.split('-').map(Number);
         const dates: string[] = [];
         for (let i = 0; i < 3; i++) {
-          // JS महीने 0-indexed होते हैं, इसलिए m - 1
           const dateObj = new Date(y, m - 1 - monthsBack, d - i);
           const yyyy = dateObj.getFullYear();
           const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -127,7 +126,6 @@ export default function PredictTab() {
         }
       });
 
-      // बाहरी फाइल (formulas.ts) से कैलकुलेशन कॉल की गई
       let res = calculatePrediction(
         inputs, selectedFormulas, pastMurda, currentMonthNums, 
         todaysRes.slice(0, 4), pastMonth1Nums, pastMonth2Nums
@@ -249,7 +247,7 @@ export default function PredictTab() {
                 <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors ${
                   isSelected ? 'bg-teal-400 border-teal-400' : 'border-slate-600'
                 }`}>
-                  {isSelected && <Check className="w-3 h-3 text-slate-900 stroke-[3]" />}
+                  <Check className={`w-3 h-3 text-slate-900 stroke-[3] ${isSelected ? 'opacity-100' : 'opacity-0'}`} />
                 </div>
                 <span className="text-sm text-slate-200">{formula.label}</span>
               </button>

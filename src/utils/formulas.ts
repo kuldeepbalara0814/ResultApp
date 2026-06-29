@@ -121,6 +121,7 @@ const MASTER_SHEET: Record<string, string[]> = {
   '00': ['86', '97', '49', '85', '87', '67', '69', '96', '98', '78', '80', '48', '50', '93', '95'],
 };
 
+// फैमिली और पलट निकालने के फंक्शन
 const getFamily = (jodi: string): string[] => {
   const rashiMap: Record<string, string> = {
     '0': '5', '1': '6', '2': '7', '3': '8', '4': '9',
@@ -131,6 +132,11 @@ const getFamily = (jodi: string): string[] => {
   const ar = rashiMap[a];
   const br = rashiMap[b];
   return [a+b, b+a, a+br, br+a, ar+b, b+ar, ar+br, br+ar];
+};
+
+const getPalat = (j: string): string => {
+  if (j === '00') return '00';
+  return j.split('').reverse().join('');
 };
 
 export const calculatePrediction = (
@@ -153,12 +159,12 @@ export const calculatePrediction = (
   const rawList: string[] = [];
   const alerts: string[] = [];
 
-  // 🔴 DANA/GAP 3D SCANNER LOGIC (Formula 11) - Totally isolated, does not affect old formulas
+  // 🔴 DANA/GAP 3D SCANNER LOGIC (Formula 11)
   const magnetNumbers = new Set<string>();
   if (selectedFormulas.includes('11') && historicalData.length >= 2) {
     for (let gap = 1; gap <= 8; gap++) {
-      const step2 = historicalData[gap - 1]; // Recent Step
-      const step1 = historicalData[gap * 2 - 1]; // Older Step
+      const step2 = historicalData[gap - 1]; 
+      const step1 = historicalData[gap * 2 - 1]; 
       if (step1 && step2) {
         const n1Arr = [step1.fd, step1.gb, step1.gl, step1.ds].filter(Boolean).map(Number);
         const n2Arr = [step2.fd, step2.gb, step2.gl, step2.ds].filter(Boolean).map(Number);
@@ -166,7 +172,6 @@ export const calculatePrediction = (
         n1Arr.forEach(n1 => {
           n2Arr.forEach(n2 => {
             const diff = Math.abs(n1 - n2);
-            // Checking 1-5 dana and 10,20,30,40,50 dana gaps
             if ([1,2,3,4,5,10,20,30,40,50].includes(diff)) {
               let next1 = n2 + diff;
               let next2 = n2 - diff;
@@ -177,7 +182,7 @@ export const calculatePrediction = (
         });
       }
     }
-    if (magnetNumbers.size > 0) {
+    if (magnetNumbers.size > 0 && dayOfMonth < 27) {
       const displayNums = Array.from(magnetNumbers).slice(0, 6).join(', ');
       alerts.push(`🎯 Dana/Gap Scanner Alert: इन नंबरों के 98% चांस हैं -> [ ${displayNums} ]`);
     }
@@ -209,11 +214,17 @@ export const calculatePrediction = (
     const yNums = [yesterday.fd, yesterday.gb, yesterday.gl, yesterday.ds].filter(Boolean);
     hasSameDayRepeat = new Set(yNums).size < yNums.length;
     hasZeroReset = yNums.some(n => n.includes('0'));
+    
+    // ⚠️ Month-End Alert Notification
+    if (dayOfMonth >= 27 && !alerts.includes("⚠️ Month-End Reset Active: दाने की चाल कम और बाकी/हाफ-राशि की पावर बढ़ा दी गई है!")) {
+      alerts.push("⚠️ Month-End Reset Active: दाने की चाल कम और बाकी/हाफ-राशि की पावर बढ़ा दी गई है!");
+    }
   }
 
   // 3. Scoring all 100 Jodis
   for (let i = 1; i <= 100; i++) {
     const jodi = i === 100 ? '00' : i.toString().padStart(2, '0');
+    const palatJodi = getPalat(jodi);
     let score = counts[jodi] || 0; 
 
     // पुराने फॉर्मूले (1 से 10 - बिल्कुल सेफ)
@@ -277,21 +288,53 @@ export const calculatePrediction = (
 
     // 🔴 THE MAGNET SCANNER EFFECT (Formula 11 Boost)
     if (selectedFormulas.includes('11') && magnetNumbers.has(jodi)) {
-      score += 20; // 20 Point direct boost to make it Super VIP
+      score += 20; 
     }
 
-    // 🔴 PRO MODE LOGIC: (Trap Filter & Operator Indicators)
+    // 🔴 PRO MODE LOGIC: (Trap Filter, Operator Indicators & New Discoveries)
     if (isProMode) {
       const fam = getFamily(jodi);
       const inPast20 = fam.some(f => past20DaysNums.includes(f));
+      
+      // 1. Public Trap (Over-due penalty)
       if (!inPast20 && past20DaysNums.length > 0) {
-        score -= 3; // Public Trap (Over-due penalty)
+        score -= 3; 
       }
+      // 2. Operator Same Day Repeat indicator
       if (hasSameDayRepeat && pastMurda.includes(jodi)) {
-        score += 5; // Operator Same Day Repeat indicator
+        score += 5; 
       }
+      // 3. Operator Board Reset indicator (Fresh numbers boost)
       if (hasZeroReset && !inPast20) {
-        score += 3; // Operator Board Reset indicator (Fresh numbers boost)
+        score += 3; 
+      }
+
+      // 🌟 NEW 1: Palat Safety (पलट सेफ्टी) - 14 vs 41 protection 🌟
+      // अगर इस जोड़ी की 'पलट' मैग्नेट स्कैनर में फंसी है, तो इस जोड़ी को भी +10 पॉइंट मिलेंगे।
+      if (selectedFormulas.includes('11') && magnetNumbers.has(palatJodi)) {
+        score += 10; 
+      }
+
+      // 🌟 NEW 2: Month-End Reset Pattern (मंथ-एंड रिसेट - 27 to 31 date) 🌟
+      if (dayOfMonth >= 27) {
+        // ऑपरेटर दाने की चाल बंद कर देता है, इसलिए मैग्नेट की पावर आधी (-10) कर दी गई है।
+        if (selectedFormulas.includes('11') && magnetNumbers.has(jodi)) {
+          score -= 10; 
+        }
+        
+        // ऑपरेटर महीने के अंत में "बाकी (Baki)" और "हाफ-राशि" पर गेम चलाता है।
+        const jodiNum = parseInt(jodi);
+        const baki = 100 - (jodiNum === 0 ? 100 : jodiNum);
+        const bakiStr = baki === 100 ? '00' : baki.toString().padStart(2, '0');
+        
+        if (pastMurda.includes(bakiStr)) {
+          score += 10; // बाकी को हेवी बूस्ट
+        }
+        
+        const isMurFam = pastMurda.some(pm => fam.includes(pm) && pm !== jodi);
+        if (isMurFam) {
+          score += 8; // मुर्दा फैमिली (हाफ राशि) को हेवी बूस्ट
+        }
       }
     }
 
@@ -304,11 +347,6 @@ export const calculatePrediction = (
   const l1 = final30.slice(0, 4);
   const l2 = final30.slice(4, 14);
   const l3 = final30.slice(14, 30);
-
-  const getPalat = (j: string) => {
-    if (j === '00') return '00';
-    return j.split('').reverse().join('');
-  };
 
   const combinedCounts: Record<string, number> = {};
   const seenPairs = new Set<string>();

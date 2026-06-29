@@ -14,7 +14,8 @@ const FORMULAS = [
   { id: '7', label: '7 - Haruf' },
   { id: '8', label: '8 - Baki' },
   { id: '9', label: '9 - Month Trend' },
-  { id: '10', label: '10 - Zero/Panja (0/5)' }
+  { id: '10', label: '10 - Zero/Panja (0/5)' },
+  { id: '11', label: '11 - Dana/Gap Scanner' }
 ];
 
 export default function PredictTab() {
@@ -30,7 +31,6 @@ export default function PredictTab() {
   const [result, setResult] = useState<ExtendedPredictionResult | null>(null);
   const [isPredicting, setIsPredicting] = useState(false);
   
-  // Backtest states
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizerMsg, setOptimizerMsg] = useState('');
   
@@ -80,7 +80,6 @@ export default function PredictTab() {
       let passCount = 0;
       let totalTestDays = 0;
 
-      // Filter days that actually have results to test against
       const validTestDays = testDays.filter(d => d.fd || d.gb || d.gl || d.ds).slice(0, 30);
 
       validTestDays.forEach((targetDay) => {
@@ -121,7 +120,7 @@ export default function PredictTab() {
         
         const res = calculatePrediction(
           dummyInputs, selectedFormulas, histMurda, histMonthNums,
-          histTodaysRes, [], [], hist20Days, isProMode
+          histTodaysRes, [], [], hist20Days, isProMode, historicalPast
         );
 
         const final30 = [...res.l1, ...res.l2, ...res.l3];
@@ -148,9 +147,10 @@ export default function PredictTab() {
 
     setTimeout(() => {
       const pastResults = getAllResultsSorted();
+      const pastResultsForCalc = pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 30);
       
       const pastMurda: string[] = [];
-      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 3).forEach(r => {
+      pastResultsForCalc.slice(0, 3).forEach(r => {
         if (r.fd) pastMurda.push(r.fd); if (r.gb) pastMurda.push(r.gb);
         if (r.gl) pastMurda.push(r.gl); if (r.ds) pastMurda.push(r.ds);
       });
@@ -178,7 +178,7 @@ export default function PredictTab() {
       }
 
       const past20DaysNums: string[] = [];
-      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 20).forEach(r => {
+      pastResultsForCalc.slice(0, 20).forEach(r => {
         if (r.fd) past20DaysNums.push(r.fd); if (r.gb) past20DaysNums.push(r.gb);
         if (r.gl) past20DaysNums.push(r.gl); if (r.ds) past20DaysNums.push(r.ds);
       });
@@ -215,7 +215,7 @@ export default function PredictTab() {
 
       let res = calculatePrediction(
         inputs, selectedFormulas, pastMurda, currentMonthNums, 
-        todaysRes.slice(0, 4), pastMonth1Nums, pastMonth2Nums, past20DaysNums, isProMode
+        todaysRes.slice(0, 4), pastMonth1Nums, pastMonth2Nums, past20DaysNums, isProMode, pastResultsForCalc
       );
       
       const userRole = sessionStorage.getItem('sahil_master_current_role') || 'guest';
@@ -384,6 +384,17 @@ export default function PredictTab() {
       {result && (
         <div className="space-y-6 mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h2 className="text-2xl font-bold text-teal-400 text-center">प्रेडिक्शन का रिजल्ट</h2>
+
+          {/* 🔴 Dana/Gap Scanner Alert Box 🔴 */}
+          {result.alerts && result.alerts.length > 0 && (
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 shadow-lg">
+              {result.alerts.map((alert, i) => (
+                <p key={i} className="text-orange-400 font-bold text-[15px] text-center animate-pulse drop-shadow-md">
+                  {alert}
+                </p>
+              ))}
+            </div>
+          )}
 
           <div className="bg-gradient-to-b from-[#374151] to-[#111827] border border-slate-700 rounded-2xl p-5 shadow-xl">
             <h3 className="text-white font-semibold mb-4 flex items-center gap-2">

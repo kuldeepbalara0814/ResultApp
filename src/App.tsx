@@ -17,6 +17,9 @@ import { logoutUser } from './utils/auth';
 // 👇 यहाँ हमने आपका नया लाइव सिंक फंक्शन इम्पोर्ट किया है
 import { setupLiveSync } from './utils/storage'; 
 
+// 👇 नया कैलकुलेटर इम्पोर्ट
+import StrategyCalculator from './StrategyCalculator';
+
 // --- टारगेट और ग्राफ लाइन (Target Trend Bar) ---
 const TargetTracker = () => {
     const [progress, setProgress] = useState(50);
@@ -168,6 +171,20 @@ export default function App() {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
 
+  const handleInstallClick = () => {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult: any) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('User accepted the A2HS prompt');
+            } else {
+                console.log('User dismissed the A2HS prompt');
+            }
+            setDeferredPrompt(null);
+        });
+    }
+  };
+
   // Live Timer Logic
   useEffect(() => {
     const formatTime = (seconds: number) => {
@@ -240,6 +257,11 @@ export default function App() {
 
             {/* Top Navigation Icons */}
             <div className="flex items-center gap-2">
+                {/* 👇 नया लेज़र कैलकुलेटर आइकॉन */}
+                <button onClick={() => setActiveTab('strategy')} className={`p-2 rounded-xl transition-all duration-300 ${activeTab==='strategy' ? 'bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] scale-105' : 'bg-[#1E293B] text-slate-400 hover:text-white hover:bg-[#2A3B52]'}`} title="Ledger Strategy">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                </button>
+                
                 {deferredPrompt && (
                     <button onClick={handleInstallClick} className="bg-teal-500/10 text-teal-400 p-2 rounded-xl border border-teal-500/30 hover:bg-teal-500/30 transition-all hover:scale-105 active:scale-95">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
@@ -271,6 +293,9 @@ export default function App() {
             {/* Naye Tabs */}
             {activeTab === 'calculator' && <CalculatorTab />}
             {activeTab === 'diary' && <DiaryTab />}
+            
+            {/* 👇 नया स्ट्रेटेजी कैलकुलेटर टैब */}
+            {activeTab === 'strategy' && <StrategyCalculator />}
           </div>
         </div>
         

@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { GameResult, TrackerEntry } from '../types';
 
@@ -135,7 +135,7 @@ export const deleteTrackerEntry = async (id: string) => {
 
 
 // ==========================================
-// 3. FIREBASE SYNC (जब भी कोई नया फ़ोन/ब्राउज़र खुलेगा, यह डेटा वापस ले आएगा)
+// 3. FIREBASE SYNC (मैनुअल सिंक के लिए पुराना कोड)
 // ==========================================
 export const syncDataFromFirebase = async () => {
   try {
@@ -172,6 +172,51 @@ export const syncDataFromFirebase = async () => {
   } catch (error) {
     console.error("Error syncing from Firebase:", error);
     return false;
+  }
+};
+
+// ==========================================
+// 3.5. REAL-TIME LIVE SYNC (ऑटोमैटिक अपडेट के लिए नया कोड)
+// ==========================================
+export const setupLiveSync = (onDataChange?: () => void) => {
+  try {
+    // 1. Live Results Listener (बिना रिफ्रेश के रिजल्ट अपडेट करेगा)
+    onSnapshot(collection(db, 'results'), (snapshot) => {
+      const resultsData: Record<string, GameResult> = {};
+      snapshot.forEach(docSnap => {
+        resultsData[docSnap.id] = docSnap.data() as GameResult;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(resultsData));
+      
+      // UI को तुरंत जगाने (re-render) के लिए एक इवेंट छोड़ना
+      window.dispatchEvent(new Event('firebase-data-updated'));
+      if (onDataChange) onDataChange();
+    });
+
+    // 2. Live Tracker Listener
+    onSnapshot(collection(db, 'tracker'), (snapshot) => {
+      const trackerData: TrackerEntry[] = [];
+      snapshot.forEach(docSnap => {
+        trackerData.push(docSnap.data() as TrackerEntry);
+      });
+      localStorage.setItem(TRACKER_KEY, JSON.stringify(trackerData));
+      
+      window.dispatchEvent(new Event('firebase-data-updated'));
+      if (onDataChange) onDataChange();
+    });
+
+    // 3. Live Capital Listener
+    onSnapshot(doc(db, 'settings', 'capital'), (docSnap) => {
+      if (docSnap.exists()) {
+        localStorage.setItem(INITIAL_CAPITAL_KEY, docSnap.data().amount.toString());
+        window.dispatchEvent(new Event('firebase-data-updated'));
+        if (onDataChange) onDataChange();
+      }
+    });
+
+    console.log("🔥 Firebase Live Sync Started Successfully!");
+  } catch (error) {
+    console.error("Live Sync Setup Error:", error);
   }
 };
 

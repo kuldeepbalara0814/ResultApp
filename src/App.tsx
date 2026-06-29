@@ -17,8 +17,8 @@ import { logoutUser } from './utils/auth';
 // 👇 यहाँ हमने आपका नया लाइव सिंक फंक्शन इम्पोर्ट किया है
 import { setupLiveSync } from './utils/storage'; 
 
-// 👇 नया कैलकुलेटर इम्पोर्ट
-import StrategyCalculator from './StrategyCalculator';
+// 👇 यह लाइन ठीक कर दी गई है (अब यह सही जगह से फाइल उठाएगा)
+import StrategyCalculator from './components/StrategyCalculator';
 
 // --- टारगेट और ग्राफ लाइन (Target Trend Bar) ---
 const TargetTracker = () => {

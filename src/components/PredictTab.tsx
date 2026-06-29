@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Zap, Check, Copy, Send, Target, RefreshCw, FileText } from 'lucide-react'; // FileText नया है
+import { Zap, Check, Copy, Send, Target, RefreshCw, FileText } from 'lucide-react'; 
 import { PredictionInput } from '../types';
 import { calculatePrediction, ExtendedPredictionResult } from '../utils/formulas';
 import { calculateLedger } from '../utils/ledger';
@@ -157,11 +157,14 @@ export default function PredictTab() {
     setTimeout(() => setLogged(false), 2000);
   };
 
-  // --- नया: रिपोर्ट डाउनलोड करने का फंक्शन ---
+  // === असली फिक्स यहाँ है (\ufeff) जिससे यह फोन में साफ हिंदी दिखेगा ===
   const downloadReport = () => {
       if (!result || !result.report) return;
       const element = document.createElement("a");
-      const file = new Blob([result.report], {type: 'text/plain;charset=utf-8'});
+      
+      // \ufeff एक BOM (Byte Order Mark) है जो फोन को बताता है कि यह असली हिंदी (UTF-8) फाइल है
+      const file = new Blob(["\ufeff" + result.report], {type: 'text/plain;charset=utf-8'});
+      
       element.href = URL.createObjectURL(file);
       element.download = `Sahil_Master_Report_${inputs.date}.txt`;
       document.body.appendChild(element);
@@ -332,7 +335,6 @@ export default function PredictTab() {
                   {logged ? 'ट्रैकर में सेव हो गया!' : 'ट्रैकर में प्ले कन्फर्म करें'}
                 </button>
 
-                {/* === नया बटन: रिपोर्ट डाउनलोड === */}
                 <button 
                   onClick={downloadReport}
                   className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2"
@@ -344,7 +346,6 @@ export default function PredictTab() {
             </div>
           </div>
 
-          {/* ... L1, L2, L3 और टोकरी का पुराना डिज़ाइन ... */}
           <div className="border border-green-500/30 rounded-2xl overflow-hidden bg-[#111827]">
             <div className="bg-green-500/10 px-4 py-3 border-b border-green-500/20">
               <h3 className="text-green-500 font-medium">L1 - सुपर VIP ({result.l1.length} जोड़ी)</h3>

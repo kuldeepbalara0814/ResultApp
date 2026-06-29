@@ -14,6 +14,8 @@ import KhaiwalTab from './components/KhaiwalTab';
 import MembershipTab from './components/MembershipTab';
 
 import { logoutUser } from './utils/auth';
+// 👇 यहाँ हमने आपका नया लाइव सिंक फंक्शन इम्पोर्ट किया है
+import { setupLiveSync } from './utils/storage'; 
 
 // --- टारगेट और ग्राफ लाइन (Target Trend Bar) ---
 const TargetTracker = () => {
@@ -21,9 +23,10 @@ const TargetTracker = () => {
     const [status, setStatus] = useState("बेस लेवल (शुरुआत)");
     const [isProfit, setIsProfit] = useState(true);
 
-    useEffect(() => {
+    // लाइव अपडेट को पकड़ने के लिए इसे भी रिफ्रेश करने का लॉजिक
+    const calculateTrend = () => {
         try {
-            const history = JSON.parse(localStorage.getItem('ledgerHistory') || '[]');
+            const history = JSON.parse(localStorage.getItem('sahil_master_tracker_v3') || '[]');
             const wins = history.filter((h: any) => h.status === 'pass').length;
             const losses = history.filter((h: any) => h.status === 'fail').length;
 
@@ -43,6 +46,13 @@ const TargetTracker = () => {
         } catch (e) {
             console.log("Trend calculation error");
         }
+    };
+
+    useEffect(() => {
+        calculateTrend();
+        // फायरबेस के लाइव अपडेट पर ग्राफ को भी तुरंत बदलने का लिसनर
+        window.addEventListener('firebase-data-updated', calculateTrend);
+        return () => window.removeEventListener('firebase-data-updated', calculateTrend);
     }, []);
 
     return (
@@ -142,6 +152,12 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [nextGame, setNextGame] = useState({ name: 'LOAD...', time: '00:00:00' });
 
+  // 👇 यहाँ हमने फायरबेस लाइव सिंक को चालू कर दिया है
+  useEffect(() => {
+    // ऐप खुलते ही फायरबेस से रियल-टाइम कनेक्शन बन जाएगा
+    setupLiveSync();
+  }, []);
+
   // PWA Install Logic
   useEffect(() => {
     const handleBeforeInstall = (e: any) => {
@@ -151,13 +167,6 @@ export default function App() {
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') setDeferredPrompt(null);
-  };
 
   // Live Timer Logic
   useEffect(() => {

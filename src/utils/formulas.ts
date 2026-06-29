@@ -142,7 +142,8 @@ export const calculatePrediction = (
   pastMonth1Nums: string[] = [],
   pastMonth2Nums: string[] = [],
   past20DaysNums: string[] = [], 
-  isProMode: boolean = false     
+  isProMode: boolean = false,
+  historicalData: Array<{date: string, fd: string, gb: string, gl: string, ds: string}> = []
 ): ExtendedPredictionResult => {
   const dateObj = new Date(inputs.date);
   const jsDay = dateObj.getDay();
@@ -150,7 +151,39 @@ export const calculatePrediction = (
   
   const jodiScores: Record<string, number> = {};
   const rawList: string[] = [];
+  const alerts: string[] = [];
 
+  // 🔴 DANA/GAP 3D SCANNER LOGIC (Formula 11) - Totally isolated, does not affect old formulas
+  const magnetNumbers = new Set<string>();
+  if (selectedFormulas.includes('11') && historicalData.length >= 2) {
+    for (let gap = 1; gap <= 8; gap++) {
+      const step2 = historicalData[gap - 1]; // Recent Step
+      const step1 = historicalData[gap * 2 - 1]; // Older Step
+      if (step1 && step2) {
+        const n1Arr = [step1.fd, step1.gb, step1.gl, step1.ds].filter(Boolean).map(Number);
+        const n2Arr = [step2.fd, step2.gb, step2.gl, step2.ds].filter(Boolean).map(Number);
+        
+        n1Arr.forEach(n1 => {
+          n2Arr.forEach(n2 => {
+            const diff = Math.abs(n1 - n2);
+            // Checking 1-5 dana and 10,20,30,40,50 dana gaps
+            if ([1,2,3,4,5,10,20,30,40,50].includes(diff)) {
+              let next1 = n2 + diff;
+              let next2 = n2 - diff;
+              if(next1 >= 0 && next1 <= 99) magnetNumbers.add(next1.toString().padStart(2, '0'));
+              if(next2 >= 0 && next2 <= 99) magnetNumbers.add(next2.toString().padStart(2, '0'));
+            }
+          });
+        });
+      }
+    }
+    if (magnetNumbers.size > 0) {
+      const displayNums = Array.from(magnetNumbers).slice(0, 6).join(', ');
+      alerts.push(`🎯 Dana/Gap Scanner Alert: इन नंबरों के 98% चांस हैं -> [ ${displayNums} ]`);
+    }
+  }
+
+  // 1. "Atma" (Base Number Collection)
   todaysRes.forEach(r => {
     const key = parseInt(r.trim(), 10).toString().padStart(2, '0');
     if (MASTER_SHEET[key]) {
@@ -158,6 +191,7 @@ export const calculatePrediction = (
     }
   });
 
+  // 2. Base Counting
   const counts: Record<string, number> = {};
   rawList.forEach(num => {
     counts[num] = (counts[num] || 0) + 1;
@@ -167,10 +201,22 @@ export const calculatePrediction = (
   const rashi = (outerHaruf + 5) % 10;
   const TOP_HARUFS = ['3', '0'];
 
+  let hasSameDayRepeat = false;
+  let hasZeroReset = false;
+
+  if (isProMode && historicalData.length > 0) {
+    const yesterday = historicalData[0];
+    const yNums = [yesterday.fd, yesterday.gb, yesterday.gl, yesterday.ds].filter(Boolean);
+    hasSameDayRepeat = new Set(yNums).size < yNums.length;
+    hasZeroReset = yNums.some(n => n.includes('0'));
+  }
+
+  // 3. Scoring all 100 Jodis
   for (let i = 1; i <= 100; i++) {
     const jodi = i === 100 ? '00' : i.toString().padStart(2, '0');
     let score = counts[jodi] || 0; 
 
+    // पुराने फॉर्मूले (1 से 10 - बिल्कुल सेफ)
     if (selectedFormulas.includes('6')) {
       if (pastMurda.includes(jodi)) { score += 10; }
       else {
@@ -229,12 +275,23 @@ export const calculatePrediction = (
       }
     }
 
-    // 🔴 PRO MODE LOGIC: "Public Trap" Filter (Over-due numbers minus points)
-    if (isProMode && past20DaysNums.length > 0) {
+    // 🔴 THE MAGNET SCANNER EFFECT (Formula 11 Boost)
+    if (selectedFormulas.includes('11') && magnetNumbers.has(jodi)) {
+      score += 20; // 20 Point direct boost to make it Super VIP
+    }
+
+    // 🔴 PRO MODE LOGIC: (Trap Filter & Operator Indicators)
+    if (isProMode) {
       const fam = getFamily(jodi);
       const inPast20 = fam.some(f => past20DaysNums.includes(f));
-      if (!inPast20) {
-        score -= 3; // 20 दिन से गायब नंबरों को पब्लिक ट्रैप मानकर माइनस पॉइंट
+      if (!inPast20 && past20DaysNums.length > 0) {
+        score -= 3; // Public Trap (Over-due penalty)
+      }
+      if (hasSameDayRepeat && pastMurda.includes(jodi)) {
+        score += 5; // Operator Same Day Repeat indicator
+      }
+      if (hasZeroReset && !inPast20) {
+        score += 3; // Operator Board Reset indicator (Fresh numbers boost)
       }
     }
 
@@ -276,6 +333,6 @@ export const calculatePrediction = (
   tokariItems.sort((a, b) => b.count - a.count);
 
   return { 
-    l1, l2, l3, tokari: tokariItems, alerts: [] 
+    l1, l2, l3, tokari: tokariItems, alerts 
   };
 };

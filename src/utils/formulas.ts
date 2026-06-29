@@ -8,15 +8,14 @@ const EVERGREEN = ['3', '8', '6', '1', '9', '0', '7', '2'];
 const UNIVERSAL = ['02', '20', '04', '40', '06', '60', '24', '42', '28', '82', '46', '64', '68', '86'];
 const MAGIC = ['12', '23', '84', '96'];
 
-// JavaScript में 0 = Sunday होता है। Python में 6 = Sunday था। मैंने इसे सही तरीके से अलाइन (Align) कर दिया है।
 const DAY_WISE_FIXED: Record<number, string[]> = {
-  0: ['93', '92', '75', '73', '71', '62', '52', '38', '13', '09', '04'], // Sunday
-  1: ['03', '92', '83', '82', '75', '71', '26', '25', '23', '22', '04'], // Monday
-  2: ['72', '98', '97', '91', '87', '82', '71', '62', '54', '41', '40', '29', '23', '18', '13', '10'], // Tuesday
-  3: ['51', '98', '97', '96', '92', '84', '62', '58', '57', '55', '53', '52', '33', '28', '27', '23', '16', '07'], // Wednesday
-  4: ['70', '69', '68', '67', '64', '60', '94', '92', '83', '82', '77', '73', '71', '66', '65', '62', '52', '41', '40', '36', '35', '32', '30', '22', '05', '00'], // Thursday
-  5: ['95', '90', '89', '88', '87', '84', '82', '72', '40', '39', '38', '37', '34', '33'], // Friday
-  6: ['97', '83', '81', '73', '72', '71', '58', '40', '36', '34', '33', '24', '21', '19', '08', '03'] // Saturday
+  0: ['93', '92', '75', '73', '71', '62', '52', '38', '13', '09', '04'],
+  1: ['03', '92', '83', '82', '75', '71', '26', '25', '23', '22', '04'],
+  2: ['72', '98', '97', '91', '87', '82', '71', '62', '54', '41', '40', '29', '23', '18', '13', '10'],
+  3: ['51', '98', '97', '96', '92', '84', '62', '58', '57', '55', '53', '52', '33', '28', '27', '23', '16', '07'],
+  4: ['70', '69', '68', '67', '64', '60', '94', '92', '83', '82', '77', '73', '71', '66', '65', '62', '52', '41', '40', '36', '35', '32', '30', '22', '05', '00'],
+  5: ['95', '90', '89', '88', '87', '84', '82', '72', '40', '39', '38', '37', '34', '33'],
+  6: ['97', '83', '81', '73', '72', '71', '58', '40', '36', '34', '33', '24', '21', '19', '08', '03']
 };
 
 const MASTER_SHEET: Record<string, string[]> = {
@@ -122,7 +121,6 @@ const MASTER_SHEET: Record<string, string[]> = {
   '00': ['86', '97', '49', '85', '87', '67', '69', '96', '98', '78', '80', '48', '50', '93', '95'],
 };
 
-// फैमिली निकालने का फंक्शन
 const getFamily = (jodi: string): string[] => {
   const rashiMap: Record<string, string> = {
     '0': '5', '1': '6', '2': '7', '3': '8', '4': '9',
@@ -142,7 +140,9 @@ export const calculatePrediction = (
   currentMonthNums: string[] = [],
   todaysRes: string[] = [],
   pastMonth1Nums: string[] = [],
-  pastMonth2Nums: string[] = []
+  pastMonth2Nums: string[] = [],
+  past20DaysNums: string[] = [], 
+  isProMode: boolean = false     
 ): ExtendedPredictionResult => {
   const dateObj = new Date(inputs.date);
   const jsDay = dateObj.getDay();
@@ -151,7 +151,6 @@ export const calculatePrediction = (
   const jodiScores: Record<string, number> = {};
   const rawList: string[] = [];
 
-  // 1. "Atma" (Base Number Collection)
   todaysRes.forEach(r => {
     const key = parseInt(r.trim(), 10).toString().padStart(2, '0');
     if (MASTER_SHEET[key]) {
@@ -159,7 +158,6 @@ export const calculatePrediction = (
     }
   });
 
-  // 2. Base Counting
   const counts: Record<string, number> = {};
   rawList.forEach(num => {
     counts[num] = (counts[num] || 0) + 1;
@@ -169,12 +167,10 @@ export const calculatePrediction = (
   const rashi = (outerHaruf + 5) % 10;
   const TOP_HARUFS = ['3', '0'];
 
-  // 3. Scoring all 100 Jodis
   for (let i = 1; i <= 100; i++) {
     const jodi = i === 100 ? '00' : i.toString().padStart(2, '0');
     let score = counts[jodi] || 0; 
 
-    // पुराने फॉर्मूले
     if (selectedFormulas.includes('6')) {
       if (pastMurda.includes(jodi)) { score += 10; }
       else {
@@ -201,9 +197,6 @@ export const calculatePrediction = (
       if (pastMurda.includes(bakiStr) || MAGIC.includes(bakiStr)) { score += 3; }
     }
 
-    // ==========================================
-    // 🔴 नया: ज़ीरो/पंजा (0/5) लॉजिक (+3 पॉइंट)
-    // ==========================================
     if (selectedFormulas.includes('10')) {
       const n1 = parseInt(jodi[0]);
       const n2 = parseInt(jodi[1]);
@@ -221,24 +214,27 @@ export const calculatePrediction = (
     if (selectedFormulas.includes('2') && EVERGREEN.includes(jodi[0]) && EVERGREEN.includes(jodi[1])) { score += 7; }
     if (selectedFormulas.includes('9') && currentMonthNums.includes(jodi)) { score += 3; }
 
-    // ==========================================
-    // 🔴 22 तारीख का ट्रिगर (+3 पॉइंट)
-    // ==========================================
     if (dayOfMonth >= 22 && currentMonthNums && currentMonthNums.length > 0) {
       const fam = getFamily(jodi);
       const appearedInMonth = fam.some(f => currentMonthNums.includes(f));
       if (!appearedInMonth) score += 3;
     }
 
-    // ==========================================
-    // 🔴 नया: क्रॉस मंथ फैमिली पैटर्न (+3 पॉइंट) (Month Shift)
-    // ==========================================
     if (pastMonth1Nums.length > 0 && pastMonth2Nums.length > 0) {
       const fam = getFamily(jodi);
       const inM1 = fam.some(f => pastMonth1Nums.includes(f));
       const inM2 = fam.some(f => pastMonth2Nums.includes(f));
       if (inM1 && inM2) {
         score += 3;
+      }
+    }
+
+    // 🔴 PRO MODE LOGIC: "Public Trap" Filter (Over-due numbers minus points)
+    if (isProMode && past20DaysNums.length > 0) {
+      const fam = getFamily(jodi);
+      const inPast20 = fam.some(f => past20DaysNums.includes(f));
+      if (!inPast20) {
+        score -= 3; // 20 दिन से गायब नंबरों को पब्लिक ट्रैप मानकर माइनस पॉइंट
       }
     }
 

@@ -201,6 +201,23 @@ export const calculatePrediction = (
       if (pastMurda.includes(bakiStr) || MAGIC.includes(bakiStr)) { score += 3; }
     }
 
+    // ==========================================
+    // 🔴 नया: ज़ीरो/पंजा (0/5) लॉजिक (+3 पॉइंट)
+    // ==========================================
+    if (selectedFormulas.includes('10')) {
+      const n1 = parseInt(jodi[0]);
+      const n2 = parseInt(jodi[1]);
+      if (
+        n1 === 0 || n2 === 0 || 
+        n1 === 5 || n2 === 5 ||
+        n1 + n2 === 5 || 
+        n1 + n2 === 15 || 
+        Math.abs(n1 - n2) === 5
+      ) {
+        score += 3;
+      }
+    }
+
     if (selectedFormulas.includes('2') && EVERGREEN.includes(jodi[0]) && EVERGREEN.includes(jodi[1])) { score += 7; }
     if (selectedFormulas.includes('9') && currentMonthNums.includes(jodi)) { score += 3; }
 

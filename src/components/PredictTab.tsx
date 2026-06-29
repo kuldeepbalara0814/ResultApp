@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Zap, Check, Copy, Send, Target, RefreshCw, Shield, Flame, BarChart2 } from 'lucide-react';
+import { Zap, Check, Copy, Send, Target, RefreshCw, FileText } from 'lucide-react'; // FileText नया है
 import { PredictionInput } from '../types';
 import { calculatePrediction, ExtendedPredictionResult } from '../utils/formulas';
 import { calculateLedger } from '../utils/ledger';
@@ -13,14 +13,11 @@ const FORMULAS = [
   { id: '6', label: '6 - Murda' },
   { id: '7', label: '7 - Haruf' },
   { id: '8', label: '8 - Baki' },
-  { id: '9', label: '9 - Month Trend' },
-  { id: '10', label: '10 - Zero/Panja (0/5)' },
-  { id: '11', label: '11 - Dana/Gap Scanner' }
+  { id: '9', label: '9 - Month Trend' }
 ];
 
 export default function PredictTab() {
   const [inputMode, setInputMode] = useState<'auto' | 'manual'>('auto');
-  const [isProMode, setIsProMode] = useState(false);
   
   const [inputs, setInputs] = useState<PredictionInput>({
     date: new Date().toISOString().split('T')[0],
@@ -30,9 +27,6 @@ export default function PredictTab() {
   const [selectedFormulas, setSelectedFormulas] = useState<string[]>(FORMULAS.map(f => f.id));
   const [result, setResult] = useState<ExtendedPredictionResult | null>(null);
   const [isPredicting, setIsPredicting] = useState(false);
-  
-  const [isOptimizing, setIsOptimizing] = useState(false);
-  const [optimizerMsg, setOptimizerMsg] = useState('');
   
   const [selectedGame, setSelectedGame] = useState<'FD' | 'GB' | 'GL' | 'DS'>('FD');
   const [copied, setCopied] = useState(false);
@@ -64,95 +58,37 @@ export default function PredictTab() {
     );
   };
 
-  const handleBacktest = () => {
-    setIsOptimizing(true);
-    setOptimizerMsg('');
-    setTimeout(() => {
-      const pastResults = getAllResultsSorted();
-      const testDays = pastResults.slice(0, 30);
-      
-      if (testDays.length === 0) {
-        setOptimizerMsg('बैकटेस्ट के लिए पर्याप्त डेटा नहीं है।');
-        setIsOptimizing(false);
-        return;
-      }
-
-      let passCount = 0;
-      let totalTestDays = 0;
-
-      const validTestDays = testDays.filter(d => d.fd || d.gb || d.gl || d.ds).slice(0, 30);
-
-      validTestDays.forEach((targetDay) => {
-        const idxInAll = pastResults.findIndex(r => r.date === targetDay.date);
-        if (idxInAll === -1) return;
-
-        const historicalPast = pastResults.slice(idxInAll + 1);
-        if (historicalPast.length === 0) return;
-
-        const histMurda: string[] = [];
-        historicalPast.slice(0, 3).forEach(r => {
-          if (r.fd) histMurda.push(r.fd); if (r.gb) histMurda.push(r.gb);
-          if (r.gl) histMurda.push(r.gl); if (r.ds) histMurda.push(r.ds);
-        });
-
-        const histYm = targetDay.date.substring(0, 7);
-        const histMonthNums: string[] = [];
-        historicalPast.filter(r => r.date.startsWith(histYm)).forEach(r => {
-          if (r.fd) histMonthNums.push(r.fd); if (r.gb) histMonthNums.push(r.gb);
-          if (r.gl) histMonthNums.push(r.gl); if (r.ds) histMonthNums.push(r.ds);
-        });
-
-        const histTodaysRes: string[] = [];
-        if (historicalPast[0]) {
-          if (historicalPast[0].ds) histTodaysRes.push(historicalPast[0].ds);
-          if (historicalPast[0].gl) histTodaysRes.push(historicalPast[0].gl);
-          if (historicalPast[0].gb) histTodaysRes.push(historicalPast[0].gb);
-          if (historicalPast[0].fd) histTodaysRes.push(historicalPast[0].fd);
-        }
-
-        const hist20Days: string[] = [];
-        historicalPast.slice(0, 20).forEach(r => {
-          if (r.fd) hist20Days.push(r.fd); if (r.gb) hist20Days.push(r.gb);
-          if (r.gl) hist20Days.push(r.gl); if (r.ds) hist20Days.push(r.ds);
-        });
-
-        const dummyInputs = { date: targetDay.date, fd: '', gb: '', gl: '', ds: '' };
-        
-        const res = calculatePrediction(
-          dummyInputs, selectedFormulas, histMurda, histMonthNums,
-          histTodaysRes, [], [], hist20Days, isProMode, historicalPast
-        );
-
-        const final30 = [...res.l1, ...res.l2, ...res.l3];
-        const hasPass = [targetDay.fd, targetDay.gb, targetDay.gl, targetDay.ds].some(v => v && final30.includes(v));
-
-        if (hasPass) passCount++;
-        totalTestDays++;
-      });
-
-      if (totalTestDays > 0) {
-        const pct = Math.round((passCount / totalTestDays) * 100);
-        setOptimizerMsg(`चुने गए फॉर्मूलों ने पिछले 30 दिनों में ${passCount} दिन (${pct}%) पासिंग दी है!`);
-      }
-      setIsOptimizing(false);
-    }, 600);
-  };
-
   const handlePredict = () => {
     setIsPredicting(true);
     setResult(null);
     setCopied(false);
     setLogged(false);
-    setOptimizerMsg('');
 
     setTimeout(() => {
       const pastResults = getAllResultsSorted();
-      const pastResultsForCalc = pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 30);
       
       const pastMurda: string[] = [];
-      pastResultsForCalc.slice(0, 3).forEach(r => {
+      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 3).forEach(r => {
         if (r.fd) pastMurda.push(r.fd); if (r.gb) pastMurda.push(r.gb);
         if (r.gl) pastMurda.push(r.gl); if (r.ds) pastMurda.push(r.ds);
+      });
+
+      const past4DaysMurda: string[] = [];
+      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 4).forEach(r => {
+        if (r.fd) past4DaysMurda.push(r.fd); if (r.gb) past4DaysMurda.push(r.gb);
+        if (r.gl) past4DaysMurda.push(r.gl); if (r.ds) past4DaysMurda.push(r.ds);
+      });
+
+      const past10DaysNums: string[] = [];
+      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 10).forEach(r => {
+        if (r.fd) past10DaysNums.push(r.fd); if (r.gb) past10DaysNums.push(r.gb);
+        if (r.gl) past10DaysNums.push(r.gl); if (r.ds) past10DaysNums.push(r.ds);
+      });
+
+      const past15DaysNums: string[] = [];
+      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 15).forEach(r => {
+        if (r.fd) past15DaysNums.push(r.fd); if (r.gb) past15DaysNums.push(r.gb);
+        if (r.gl) past15DaysNums.push(r.gl); if (r.ds) past15DaysNums.push(r.ds);
       });
 
       const currentYm = inputs.date.substring(0, 7);
@@ -177,45 +113,9 @@ export default function PredictTab() {
         }
       }
 
-      const past20DaysNums: string[] = [];
-      pastResultsForCalc.slice(0, 20).forEach(r => {
-        if (r.fd) past20DaysNums.push(r.fd); if (r.gb) past20DaysNums.push(r.gb);
-        if (r.gl) past20DaysNums.push(r.gl); if (r.ds) past20DaysNums.push(r.ds);
-      });
-
-      const getTargetDates = (baseDateStr: string, monthsBack: number) => {
-        const [y, m, d] = baseDateStr.split('-').map(Number);
-        const dates: string[] = [];
-        for (let i = 0; i < 3; i++) {
-          const dateObj = new Date(y, m - 1 - monthsBack, d - i);
-          const yyyy = dateObj.getFullYear();
-          const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-          const dd = String(dateObj.getDate()).padStart(2, '0');
-          dates.push(`${yyyy}-${mm}-${dd}`);
-        }
-        return dates;
-      };
-
-      const m1Dates = getTargetDates(inputs.date, 1);
-      const m2Dates = getTargetDates(inputs.date, 2);
-
-      const pastMonth1Nums: string[] = [];
-      const pastMonth2Nums: string[] = [];
-
-      pastResults.forEach(r => {
-        if (m1Dates.includes(r.date)) {
-          if (r.fd) pastMonth1Nums.push(r.fd); if (r.gb) pastMonth1Nums.push(r.gb);
-          if (r.gl) pastMonth1Nums.push(r.gl); if (r.ds) pastMonth1Nums.push(r.ds);
-        }
-        if (m2Dates.includes(r.date)) {
-          if (r.fd) pastMonth2Nums.push(r.fd); if (r.gb) pastMonth2Nums.push(r.gb);
-          if (r.gl) pastMonth2Nums.push(r.gl); if (r.ds) pastMonth2Nums.push(r.ds);
-        }
-      });
-
       let res = calculatePrediction(
         inputs, selectedFormulas, pastMurda, currentMonthNums, 
-        todaysRes.slice(0, 4), pastMonth1Nums, pastMonth2Nums, past20DaysNums, isProMode, pastResultsForCalc
+        todaysRes.slice(0, 4), past4DaysMurda, past10DaysNums, past15DaysNums
       );
       
       const userRole = sessionStorage.getItem('sahil_master_current_role') || 'guest';
@@ -227,7 +127,8 @@ export default function PredictTab() {
           l2: ['05', '06', '07', '08', '09', '10', '11', '12', '13', '14'],
           l3: ['15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30'],
           tokari: [],
-          alerts: []
+          alerts: [],
+          report: "गैस्ट यूजर के लिए रिपोर्ट उपलब्ध नहीं है।"
         };
       }
 
@@ -256,24 +157,23 @@ export default function PredictTab() {
     setTimeout(() => setLogged(false), 2000);
   };
 
-  return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6 pb-24">
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-xl font-bold text-teal-400">आज की प्रेडिक्शन</h1>
-        <button 
-          onClick={() => setIsProMode(!isProMode)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
-            isProMode 
-              ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' 
-              : 'bg-green-500/10 text-green-400 border-green-500/30'
-          }`}
-        >
-          {isProMode ? <Flame className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
-          {isProMode ? 'Pro Mode' : 'Safe Mode'}
-        </button>
-      </div>
+  // --- नया: रिपोर्ट डाउनलोड करने का फंक्शन ---
+  const downloadReport = () => {
+      if (!result || !result.report) return;
+      const element = document.createElement("a");
+      const file = new Blob([result.report], {type: 'text/plain;charset=utf-8'});
+      element.href = URL.createObjectURL(file);
+      element.download = `Sahil_Master_Report_${inputs.date}.txt`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+  };
 
-      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-6 shadow-md">
+  return (
+    <div className="p-4 space-y-6 pb-24">
+      <h1 className="text-xl font-bold text-teal-400 mb-2">आज की प्रेडिक्शन</h1>
+
+      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-white font-semibold">नंबर दर्ज करें</h2>
           <div className="flex bg-[#0B1120] rounded-lg p-1 border border-slate-800">
@@ -332,25 +232,9 @@ export default function PredictTab() {
         )}
       </div>
 
-      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-5 shadow-md">
-        <div className="flex items-center justify-between">
-           <h2 className="text-white font-semibold">फॉर्मूला चुनें</h2>
-           <button 
-             onClick={handleBacktest}
-             disabled={isOptimizing}
-             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1F2937] hover:bg-[#374151] rounded-lg text-xs font-medium text-slate-300 transition-colors border border-slate-700 disabled:opacity-50"
-           >
-             <BarChart2 className={`w-3.5 h-3.5 ${isOptimizing ? 'animate-pulse text-teal-400' : ''}`} />
-             {isOptimizing ? 'टेस्टिंग...' : 'बैकटेस्ट'}
-           </button>
-        </div>
+      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-5">
+        <h2 className="text-white font-semibold">फॉर्मूला चुनें</h2>
         
-        {optimizerMsg && (
-          <div className="bg-teal-400/10 border border-teal-400/30 text-teal-300 text-sm p-3 rounded-lg flex items-center justify-center text-center font-medium animate-in fade-in">
-            {optimizerMsg}
-          </div>
-        )}
-
         <div className="grid grid-cols-2 gap-4">
           {FORMULAS.map(formula => {
             const isSelected = selectedFormulas.includes(formula.id);
@@ -363,7 +247,7 @@ export default function PredictTab() {
                 <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors ${
                   isSelected ? 'bg-teal-400 border-teal-400' : 'border-slate-600'
                 }`}>
-                  <Check className={`w-3 h-3 text-slate-900 stroke-[3] ${isSelected ? 'opacity-100' : 'opacity-0'}`} />
+                  {isSelected && <Check className="w-3 h-3 text-slate-900 stroke-[3]" />}
                 </div>
                 <span className="text-sm text-slate-200">{formula.label}</span>
               </button>
@@ -378,20 +262,20 @@ export default function PredictTab() {
         className="w-full bg-teal-400 hover:bg-teal-300 text-slate-900 font-bold py-4 rounded-xl flex items-center justify-center space-x-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Zap className={`w-5 h-5 ${isPredicting ? 'animate-pulse' : ''}`} />
-        <span>{isPredicting ? 'प्रेडिक्शन निकालें' : 'प्रेडिक्शन निकालें'}</span>
+        <span>{isPredicting ? 'प्रेडिक्शन हो रही है...' : 'प्रेडिक्शन निकालें'}</span>
       </button>
 
       {result && (
         <div className="space-y-6 mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h2 className="text-2xl font-bold text-teal-400 text-center">प्रेडिक्शन का रिजल्ट</h2>
-
-          {/* 🔴 Dana/Gap Scanner Alert Box 🔴 */}
+          
           {result.alerts && result.alerts.length > 0 && (
-            <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 shadow-lg">
-              {result.alerts.map((alert, i) => (
-                <p key={i} className="text-orange-400 font-bold text-[15px] text-center animate-pulse drop-shadow-md">
-                  {alert}
-                </p>
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+              {result.alerts.map((msg, idx) => (
+                <div key={idx} className="flex items-start gap-2 text-red-400 font-bold text-sm mb-2 last:mb-0">
+                  <span className="animate-pulse mt-0.5">🔥</span> 
+                  <span>{msg}</span>
+                </div>
               ))}
             </div>
           )}
@@ -447,19 +331,27 @@ export default function PredictTab() {
                   {logged ? <Check className="w-5 h-5" /> : <Target className="w-5 h-5" />}
                   {logged ? 'ट्रैकर में सेव हो गया!' : 'ट्रैकर में प्ले कन्फर्म करें'}
                 </button>
+
+                {/* === नया बटन: रिपोर्ट डाउनलोड === */}
+                <button 
+                  onClick={downloadReport}
+                  className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2"
+                >
+                  <FileText className="w-5 h-5 text-slate-400" />
+                  कैलकुलेशन रिपोर्ट डाउनलोड करें (TXT)
+                </button>
               </div>
             </div>
           </div>
 
+          {/* ... L1, L2, L3 और टोकरी का पुराना डिज़ाइन ... */}
           <div className="border border-green-500/30 rounded-2xl overflow-hidden bg-[#111827]">
             <div className="bg-green-500/10 px-4 py-3 border-b border-green-500/20">
               <h3 className="text-green-500 font-medium">L1 - सुपर VIP ({result.l1.length} जोड़ी)</h3>
             </div>
             <div className="p-4 flex flex-wrap gap-3">
               {result.l1.map((num, i) => (
-                <div key={i} className="bg-green-500/20 text-green-400 font-mono text-lg px-3 py-2 rounded-lg border border-green-500/30">
-                  {num}
-                </div>
+                <div key={i} className="bg-green-500/20 text-green-400 font-mono text-lg px-3 py-2 rounded-lg border border-green-500/30">{num}</div>
               ))}
               {result.l1.length === 0 && <p className="text-slate-500 text-sm">कोई नंबर नहीं</p>}
             </div>
@@ -471,9 +363,7 @@ export default function PredictTab() {
             </div>
             <div className="p-4 flex flex-wrap gap-3">
               {result.l2.map((num, i) => (
-                <div key={i} className="bg-blue-500/20 text-blue-400 font-mono text-lg px-3 py-2 rounded-lg border border-blue-500/30">
-                  {num}
-                </div>
+                <div key={i} className="bg-blue-500/20 text-blue-400 font-mono text-lg px-3 py-2 rounded-lg border border-blue-500/30">{num}</div>
               ))}
               {result.l2.length === 0 && <p className="text-slate-500 text-sm">कोई नंबर नहीं</p>}
             </div>
@@ -485,9 +375,7 @@ export default function PredictTab() {
             </div>
             <div className="p-4 flex flex-wrap gap-3">
               {result.l3.map((num, i) => (
-                <div key={i} className="bg-teal-400/20 text-teal-300 font-mono text-lg px-3 py-2 rounded-lg border border-teal-400/30">
-                  {num}
-                </div>
+                <div key={i} className="bg-teal-400/20 text-teal-300 font-mono text-lg px-3 py-2 rounded-lg border border-teal-400/30">{num}</div>
               ))}
               {result.l3.length === 0 && <p className="text-slate-500 text-sm">कोई नंबर नहीं</p>}
             </div>
@@ -499,12 +387,8 @@ export default function PredictTab() {
               <div className="grid grid-cols-4 md:grid-cols-5 gap-3">
                 {result.tokari.map((item, i) => (
                   <div key={i} className="bg-[#374151] rounded-lg p-2 flex flex-col items-center justify-center border border-slate-700/50">
-                    <div className="text-white font-mono font-medium text-sm md:text-base">
-                      {item.id}
-                    </div>
-                    <div className="text-xs text-slate-400 mt-1">
-                      {item.count}x
-                    </div>
+                    <div className="text-white font-mono font-medium text-sm md:text-base">{item.id}</div>
+                    <div className="text-xs text-slate-400 mt-1">{item.count}x</div>
                   </div>
                 ))}
               </div>

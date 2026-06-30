@@ -12,12 +12,13 @@ import LoginScreen from './components/LoginScreen';
 // Naye Components Import
 import KhaiwalTab from './components/KhaiwalTab';
 import MembershipTab from './components/MembershipTab';
+import AdminPanelTab from './components/AdminPanelTab'; // 🛡️ आपका नया एडमिन पैनल इम्पोर्ट
 
 import { logoutUser } from './utils/auth';
 // 👇 यहाँ हमने आपका नया लाइव सिंक फंक्शन इम्पोर्ट किया है
 import { setupLiveSync } from './utils/storage'; 
 
-// 👇 यह लाइन ठीक कर दी गई है (अब यह सही जगह से फाइल उठाएगा)
+// 👇 यह LINE ठीक कर दी गई है (अब यह सही जगह से फाइल उठाएगा)
 import StrategyCalculator from './components/StrategyCalculator';
 
 // --- नया वेलकम सेक्शन (Welcome Mission Component) ---
@@ -28,7 +29,7 @@ const WelcomeSection = () => {
                 साहिल मास्टर सिस्टम
             </h2>
             <p className="text-[#e6007a] font-bold text-xs tracking-wider mb-4 uppercase">
-                "आपका पैसा, आपका कंट्रोल, हमारा डिसिप्लिन।"
+                "आपका पैसा, आपका CONTROL, हमारा डिसिप्लिन।"
             </p>
             
             <div className="w-full h-px bg-[#008080]/20 mb-4"></div>
@@ -49,7 +50,7 @@ const WelcomeSection = () => {
                 <p className="flex items-start gap-2">
                     <span className="text-base mt-0.5">🤝</span>
                     <span>
-                        <strong className="text-white">एक सच्चे दोस्त की तरह अनुशासन:</strong> 20 साल की रिसर्च से बना यह टूल आपको तब खेलने से रोकेगा (No Play) जब आपकी मेहनत की कमाई खतरे में होगी।
+                        <strong className="text-white">एक सच्चे दोस्त की तरह अनुशासन:</strong> 20 साल की रिसर्च से बना यह टूल आपको तब खेलने से रोकेगा (No Play) when आपकी मेहनत की कमाई खतरे में होगी।
                     </span>
                 </p>
             </div>
@@ -191,6 +192,7 @@ const CalculatorTab = () => {
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<string>('super-admin'); // 👑 'super-admin' या 'sub-admin' रोल हैंडल करने के लिए
   
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [nextGame, setNextGame] = useState({ name: 'LOAD...', time: '00:00:00' });
@@ -261,6 +263,10 @@ export default function App() {
   useEffect(() => {
     const sessionAuth = sessionStorage.getItem('is_auth');
     if (sessionAuth === 'true') setIsAuthenticated(true);
+    
+    // सत्र से रोल लोड करें (डिफ़ॉल्ट सुपर एडमिन)
+    const sessionRole = sessionStorage.getItem('user_role') || 'super-admin';
+    setUserRole(sessionRole);
   }, []);
 
   const handleLogin = () => setIsAuthenticated(true);
@@ -304,6 +310,17 @@ export default function App() {
 
             {/* Top Navigation Icons */}
             <div className="flex items-center gap-2">
+                {/* 🛡️ नया एडमिन पैनल शील्ड बटन */}
+                <button 
+                  onClick={() => setActiveTab('admin')} 
+                  className={`p-2 rounded-xl transition-all duration-300 border ${activeTab === 'admin' ? 'bg-[#e6007a] border-[#e6007a] text-white shadow-[0_0_15px_rgba(230,0,122,0.5)] scale-105' : 'bg-[#051014] border-[#008080]/40 text-slate-400 hover:text-white hover:border-[#e6007a]/50 hover:bg-[#e6007a]/10'}`} 
+                  title="नियंत्रण पैनल (Admin)"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </button>
+
                 {/* लेज़र कैलकुलेटर आइकॉन */}
                 <button onClick={() => setActiveTab('strategy')} className={`p-2 rounded-xl transition-all duration-300 border ${activeTab==='strategy' ? 'bg-[#e6007a] border-[#e6007a] text-white shadow-[0_0_15px_rgba(230,0,122,0.5)] scale-105' : 'bg-[#051014] border-[#008080]/40 text-slate-400 hover:text-white hover:border-[#e6007a]/50 hover:bg-[#e6007a]/10'}`} title="Ledger Strategy">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
@@ -343,6 +360,11 @@ export default function App() {
             
             {/* नया स्ट्रेटेजी कैलकुलेटर टैब */}
             {activeTab === 'strategy' && <StrategyCalculator />}
+
+            {/* 🛡️ नया एडमिन पैनल टैब स्क्रीन */}
+            {activeTab === 'admin' && (
+              <AdminPanelTab userRole={userRole} setUserRole={setUserRole} />
+            )}
           </div>
         </div>
         

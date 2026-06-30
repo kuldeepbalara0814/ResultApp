@@ -5,6 +5,51 @@ export interface ExtendedPredictionResult extends PredictionResult {
   report?: string; 
 }
 
+// === 🚀 DYNAMIC WEIGHTS ENGINE (ऑटो-शफल के लिए) ===
+export interface FormulaWeights {
+  MURDA_DIRECT: number;
+  MURDA_FAMILY: number;
+  UNIVERSAL: number;
+  MAGIC: number;
+  HARUF: number;
+  DAY_FIX: number;
+  BAKI: number;
+  EVERGREEN: number;
+  MONTH_TREND: number;
+  LOGIC_3: number;
+  GAP_10_DAYS: number;
+  DANA_HIGH: number;
+  DANA_LOW: number;
+  DATE_22_PRO: number;
+  GAP_15_DAYS: number;
+  GAP_1_2_STEP: number;
+  CALENDAR_EARLY: number;
+  CALENDAR_EXACT: number;
+  CALENDAR_LATE: number;
+  CROSS_MONTH: number;
+}
+
+export const DEFAULT_WEIGHTS: FormulaWeights = {
+  MURDA_DIRECT: 10, MURDA_FAMILY: 6, UNIVERSAL: 10, MAGIC: 15,
+  HARUF: 5, DAY_FIX: 5, BAKI: 3, EVERGREEN: 7, MONTH_TREND: 3,
+  LOGIC_3: 3, GAP_10_DAYS: 2, DANA_HIGH: 10, DANA_LOW: 5,
+  DATE_22_PRO: 3, GAP_15_DAYS: 2, GAP_1_2_STEP: 2,
+  CALENDAR_EARLY: 7, CALENDAR_EXACT: 9, CALENDAR_LATE: 5, CROSS_MONTH: 5
+};
+
+export const getCurrentWeights = (): FormulaWeights => {
+  try {
+    const saved = localStorage.getItem('sahil_master_weights');
+    if (saved) return { ...DEFAULT_WEIGHTS, ...JSON.parse(saved) };
+  } catch (e) { console.error("Error loading weights", e); }
+  return DEFAULT_WEIGHTS;
+};
+
+export const saveWeights = (newWeights: FormulaWeights) => {
+  localStorage.setItem('sahil_master_weights', JSON.stringify(newWeights));
+};
+// ==================================================
+
 const EVERGREEN = ['3', '8', '6', '1', '9', '0', '7', '2'];
 const UNIVERSAL = ['02', '20', '04', '40', '06', '60', '24', '42', '28', '82', '46', '64', '68', '86'];
 const MAGIC = ['12', '23', '84', '96'];
@@ -146,9 +191,11 @@ export const calculatePrediction = (
   past4DaysMurda: string[] = [],
   past10DaysNums: string[] = [],
   past15DaysNums: string[] = [],
-  pastMonth1Nums: string[] = [], // नया
-  pastMonth2Nums: string[] = []  // नया
+  pastMonth1Nums: string[] = [], 
+  pastMonth2Nums: string[] = []  
 ): ExtendedPredictionResult => {
+  
+  const w = getCurrentWeights(); // डायनामिक वेट्स फेच करना
   const dateObj = new Date(inputs.date);
   const jsDay = dateObj.getDay();
   const dayOfMonth = dateObj.getDate();
@@ -181,30 +228,30 @@ export const calculatePrediction = (
     if (score > 0) details['बेस (टोकरी)'] = score;
 
     if (selectedFormulas.includes('6')) {
-      if (pastMurda.includes(jodi)) { score += 10; details['मुर्दा (डायरेक्ट)'] = 10; }
+      if (pastMurda.includes(jodi)) { score += w.MURDA_DIRECT; details['मुर्दा (डायरेक्ट)'] = w.MURDA_DIRECT; }
       else {
         let isMurFam = false;
         for (const pm of pastMurda) {
           if (getFamily(pm).includes(jodi)) { isMurFam = true; break; }
         }
-        if (isMurFam) { score += 6; details['मुर्दा (फैमिली)'] = 6; }
+        if (isMurFam) { score += w.MURDA_FAMILY; details['मुर्दा (फैमिली)'] = w.MURDA_FAMILY; }
       }
     }
 
     if (selectedFormulas.includes('3') && [1,2,3].includes(dayOfMonth) && UNIVERSAL.includes(jodi)) { 
-        score += 10; details['यूनिवर्सल (1-3 दिन)'] = 10; 
+        score += w.UNIVERSAL; details['यूनिवर्सल (1-3 दिन)'] = w.UNIVERSAL; 
     }
     
     if (selectedFormulas.includes('4') && MAGIC.includes(jodi)) { 
-        score += 15; details['मैजिक फॉर्मूला'] = 15; 
+        score += w.MAGIC; details['मैजिक फॉर्मूला'] = w.MAGIC; 
     }
     
     if (selectedFormulas.includes('7') && (jodi.includes(outerHaruf.toString()) || jodi.includes(rashi.toString()))) { 
-        score += 5; details['हरूफ मैच'] = 5; 
+        score += w.HARUF; details['हरूफ मैच'] = w.HARUF; 
     }
     
     if (selectedFormulas.includes('5') && (DAY_WISE_FIXED[jsDay] || []).includes(jodi)) { 
-        score += 5; details['डे-वाइज फिक्स'] = 5; 
+        score += w.DAY_FIX; details['डे-वाइज फिक्स'] = w.DAY_FIX; 
     }
 
     if (selectedFormulas.includes('8')) {
@@ -212,29 +259,29 @@ export const calculatePrediction = (
       const baki = 100 - (jodiNum === 0 ? 100 : jodiNum);
       const bakiStr = baki === 100 ? '00' : baki.toString().padStart(2, '0');
       if (pastMurda.includes(bakiStr) || MAGIC.includes(bakiStr)) { 
-          score += 3; details['बाकी (Baki)'] = 3; 
+          score += w.BAKI; details['बाकी (Baki)'] = w.BAKI; 
       }
     }
 
     if (selectedFormulas.includes('2') && EVERGREEN.includes(jodi[0]) && EVERGREEN.includes(jodi[1])) { 
-        score += 7; details['एवरग्रीन'] = 7; 
+        score += w.EVERGREEN; details['एवरग्रीन'] = w.EVERGREEN; 
     }
     
     if (selectedFormulas.includes('9') && currentMonthNums.includes(jodi)) { 
-        score += 3; details['मंथ ट्रेंड'] = 3; 
+        score += w.MONTH_TREND; details['मंथ ट्रेंड'] = w.MONTH_TREND; 
     }
 
     if (selectedFormulas.includes('10')) {
       const isLogic3Active = LOGIC_3_JORIS.some(j => past4DaysMurda.includes(j));
       if (isLogic3Active && LOGIC_3_JORIS.includes(jodi)) {
-        score += 3; details['लॉजिक 3 जोड़ी'] = 3;
+        score += w.LOGIC_3; details['लॉजिक 3 जोड़ी'] = w.LOGIC_3;
       }
     }
 
     if (past10DaysNums && past10DaysNums.length > 0) {
       const fam = getFamily(jodi);
       const hasAppeared = fam.some(f => past10DaysNums.includes(f));
-      if (!hasAppeared) { score += 2; details['10 दिन गैप'] = 2; }
+      if (!hasAppeared) { score += w.GAP_10_DAYS; details['10 दिन गैप'] = w.GAP_10_DAYS; }
     }
 
     // 🔴 दाना ट्रैप 
@@ -246,22 +293,22 @@ export const calculatePrediction = (
         if ([1, 2, 3, 10, 20, 30].includes(diff)) gotHighDana = true;
         else if ([4, 5, 6, 7, 8, 9, 40, 50, 60, 70, 80, 90].includes(diff)) gotLowDana = true;
       }
-      if (gotHighDana) { score += 10; details['दाना ट्रैप (हाई)'] = 10; }
-      else if (gotLowDana) { score += 5; details['दाना ट्रैप (लो)'] = 5; }
+      if (gotHighDana) { score += w.DANA_HIGH; details['दाना ट्रैप (हाई)'] = w.DANA_HIGH; }
+      else if (gotLowDana) { score += w.DANA_LOW; details['दाना ट्रैप (लो)'] = w.DANA_LOW; }
     }
 
     // 🔴 22 तारीख का नियम
     if (dayOfMonth >= 22 && currentMonthNums && currentMonthNums.length > 0) {
       const fam = getFamily(jodi);
       const appearedInMonth = fam.some(f => currentMonthNums.includes(f));
-      if (!appearedInMonth) { score += 3; details['22+ डेट प्रो नियम'] = 3; }
+      if (!appearedInMonth) { score += w.DATE_22_PRO; details['22+ डेट प्रो नियम'] = w.DATE_22_PRO; }
     }
 
     // 🔴 15 दिन बंद घर
     if (past15DaysNums && past15DaysNums.length > 0) {
       const fam = getFamily(jodi);
       const appearedIn15Days = fam.some(f => past15DaysNums.includes(f));
-      if (!appearedIn15Days) { score += 2; details['15 दिन बंद घर'] = 2; }
+      if (!appearedIn15Days) { score += w.GAP_15_DAYS; details['15 दिन बंद घर'] = w.GAP_15_DAYS; }
     }
 
     // 🔴 3rd Step Gap 
@@ -273,21 +320,21 @@ export const calculatePrediction = (
       const daysAgoList = [...new Set(appearanceIndices.map(k => Math.floor(k / 4) + 1))].sort((a, b) => a - b);
 
       if (daysAgoList.length >= 1) {
-          score += 2; details['गैप 1st/2nd स्टेप'] = 2;
+          score += w.GAP_1_2_STEP; details['गैप 1st/2nd स्टेप'] = w.GAP_1_2_STEP;
           if (daysAgoList.length >= 2) {
               const t2 = daysAgoList[0]; 
               const t1 = daysAgoList[1]; 
               const gap = t1 - t2;       
               const targetDelta = t2 - gap; 
 
-              if (targetDelta === -1) { score += 7; details['कैलेंडर ट्रैप (1 दिन जल्दी)'] = 7; }
-              else if (targetDelta === 0) { score += 9; details['कैलेंडर ट्रैप (सटीक दिन)'] = 9; }
-              else if (targetDelta === 1) { score += 5; details['कैलेंडर ट्रैप (1 दिन लेट)'] = 5; }
+              if (targetDelta === -1) { score += w.CALENDAR_EARLY; details['कैलेंडर ट्रैप (1 दिन जल्दी)'] = w.CALENDAR_EARLY; }
+              else if (targetDelta === 0) { score += w.CALENDAR_EXACT; details['कैलेंडर ट्रैप (सटीक दिन)'] = w.CALENDAR_EXACT; }
+              else if (targetDelta === 1) { score += w.CALENDAR_LATE; details['कैलेंडर ट्रैप (1 दिन लेट)'] = w.CALENDAR_LATE; }
           }
       }
     }
 
-    // 🔴 क्रॉस-मंथ शिफ्ट ट्रैप (आपका नया नियम जो छूट रहा था)
+    // 🔴 क्रॉस-मंथ शिफ्ट ट्रैप
     if (pastMonth1Nums.length > 0 || pastMonth2Nums.length > 0) {
       const fam = getFamily(jodi);
       let monthShiftMatch = false;
@@ -295,8 +342,8 @@ export const calculatePrediction = (
       if (pastMonth2Nums.some(n => fam.includes(n))) monthShiftMatch = true;
       
       if (monthShiftMatch) {
-          score += 5; 
-          details['क्रॉस-मंथ शिफ्ट (Cross-Month)'] = 5;
+          score += w.CROSS_MONTH; 
+          details['क्रॉस-मंथ शिफ्ट (Cross-Month)'] = w.CROSS_MONTH;
       }
     }
 
@@ -343,4 +390,41 @@ export const calculatePrediction = (
   return { 
     l1, l2, l3, tokari: tokariItems, alerts: Array.from(alertsSet), report: reportStr 
   };
+};
+
+// === 🤖 AI SHUFFLE ENGINE (सिर्फ एडमिन की परमिशन के लिए) ===
+export const getShuffleSuggestion = (past15DaysNums: string[]): { detected: boolean, message: string, proposedWeights: FormulaWeights | null } => {
+  const current = getCurrentWeights();
+  
+  if (!past15DaysNums || past15DaysNums.length < 10) {
+    return { detected: false, message: "डेटा पर्याप्त नहीं है।", proposedWeights: null };
+  }
+
+  // AI का विश्लेषण: क्या मुर्दा (Repeat) ज्यादा आ रहा है?
+  let murdaCount = 0;
+  for (let i = 0; i < past15DaysNums.length - 1; i++) {
+    if (past15DaysNums.slice(i+1).includes(past15DaysNums[i])) murdaCount++;
+  }
+
+  // अगर ऑपरेटर मुर्दा बहुत ज्यादा मार रहा है (Over 40% repeat)
+  if (murdaCount > (past15DaysNums.length * 0.4) && current.MURDA_DIRECT < 12) {
+    const proposed = { ...current, MURDA_DIRECT: current.MURDA_DIRECT + 1, DANA_HIGH: current.DANA_HIGH - 1 };
+    return { 
+      detected: true, 
+      message: "⚠️ ऑपरेटर आजकल 'मुर्दा' (Repeat) बहुत ज्यादा खेल रहा है। मेरी सलाह है कि मुर्दा फॉर्मूले के पॉइंट (+1) बढ़ा दिए जाएँ और दाना ट्रैप (-1) कम कर दिया जाए।", 
+      proposedWeights: proposed 
+    };
+  }
+
+  // अगर ऑपरेटर मुर्दा बिल्कुल नहीं मार रहा (Under 10% repeat)
+  if (murdaCount < (past15DaysNums.length * 0.1) && current.DANA_HIGH < 12) {
+    const proposed = { ...current, MURDA_DIRECT: current.MURDA_DIRECT - 1, DANA_HIGH: current.DANA_HIGH + 1 };
+    return { 
+      detected: true, 
+      message: "⚠️ ऑपरेटर ने चाल बदल दी है। वह मुर्दा नहीं मार रहा बल्कि 'दाना' (Difference) पर खेल रहा है। दाना फॉर्मूले के पॉइंट (+1) बढ़ाए जाएँ?", 
+      proposedWeights: proposed 
+    };
+  }
+
+  return { detected: false, message: "ऑपरेटर की चाल नॉर्मल है, बदलाव की ज़रूरत नहीं।", proposedWeights: null };
 };

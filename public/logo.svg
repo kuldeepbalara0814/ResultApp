@@ -3,39 +3,42 @@
     <!-- डार्क प्रीमियम बैकग्राउंड -->
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#051014" />
-      <stop offset="100%" stop-color="#0b171e" />
+      <stop offset="100%" stop-color="#11222c" />
     </linearGradient>
-    
-    <!-- SM के लिए शानदार मैजेंटा-टील मिक्स ग्रेडिएंट -->
+
+    <!-- 'A' के लिए मैजेंटा और टील का शानदार मिक्स -->
     <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ff4d94" />
-      <stop offset="50%" stop-color="#e6007a" />
-      <stop offset="100%" stop-color="#00e6e6" />
+      <stop offset="0%" stop-color="#00e6e6" />
+      <stop offset="50%" stop-color="#ff4d94" />
+      <stop offset="100%" stop-color="#e6007a" />
     </linearGradient>
 
     <!-- हल्का ग्लो इफ़ेक्ट -->
     <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feGaussianBlur stdDeviation="3.5" result="blur" />
       <feComposite in="SourceGraphic" in2="blur" operator="over" />
     </filter>
   </defs>
 
-  <!-- मुख्य बैकग्राउंड -->
-  <rect width="200" height="200" rx="45" fill="url(#bg)" />
+  <!-- मुख्य बैकग्राउंड (गोलाकार किनारों के साथ) -->
+  <rect width="200" height="200" rx="50" fill="url(#bg)" />
 
-  <!-- आउटर टील बॉर्डर (हल्का) -->
-  <rect x="8" y="8" width="184" height="184" rx="38" fill="none" stroke="#008080" stroke-width="1.5" opacity="0.5"/>
+  <!-- बाहरी रिंग (Teal - टूटी हुई लाइनों वाला टेक इफ़ेक्ट) -->
+  <circle cx="100" cy="90" r="65" fill="none" stroke="#008080" stroke-width="2" opacity="0.6" stroke-dasharray="10 6"/>
   
-  <!-- इनर मैजेंटा बॉर्डर (तेज चमक) -->
-  <rect x="16" y="16" width="168" height="168" rx="32" fill="none" stroke="#e6007a" stroke-width="2.5" opacity="0.8" filter="url(#glow)"/>
+  <!-- अंदरूनी चमकती रिंग (Magenta) -->
+  <circle cx="100" cy="90" r="54" fill="none" stroke="#e6007a" stroke-width="2.5" opacity="0.85" filter="url(#glow)"/>
 
-  <!-- स्टाइलिश और रॉयल 'SM' फॉन्ट -->
-  <text x="100" y="118" font-family="'Georgia', 'Times New Roman', serif" font-style="italic" font-weight="bold" font-size="85" fill="url(#textGrad)" text-anchor="middle" filter="url(#glow)">SM</text>
+  <!-- मुख्य अक्षर 'A' -->
+  <text x="100" y="116" font-family="'Georgia', 'Times New Roman', serif" font-weight="bold" font-size="75" fill="url(#textGrad)" text-anchor="middle" filter="url(#glow)">A</text>
 
-  <!-- MASTER के लिए साफ़ और मॉडर्न फॉन्ट -->
-  <text x="102" y="158" font-family="'Trebuchet MS', 'Montserrat', sans-serif" font-weight="bold" font-size="16" fill="#ffffff" text-anchor="middle" letter-spacing="8" opacity="0.9">MASTER</text>
+  <!-- AVTARAVNEET मेन टेक्स्ट -->
+  <text x="100" y="172" font-family="'Montserrat', 'Trebuchet MS', sans-serif" font-weight="bold" font-size="12" fill="#ffffff" text-anchor="middle" letter-spacing="4" opacity="0.95">AVTARAVNEET</text>
+
+  <!-- FORMULA टेक्स्ट (छोटा और स्टाइलिश) -->
+  <text x="100" y="187" font-family="'Montserrat', 'Trebuchet MS', sans-serif" font-weight="bold" font-size="8" fill="#00e6e6" text-anchor="middle" letter-spacing="6" opacity="0.8" filter="url(#glow)">FORMULA</text>
   
   <!-- डिज़ाइनर डॉट्स -->
-  <circle cx="35" cy="153" r="2.5" fill="#e6007a" filter="url(#glow)"/>
-  <circle cx="168" cy="153" r="2.5" fill="#00e6e6" filter="url(#glow)"/>
+  <circle cx="25" cy="90" r="2.5" fill="#00e6e6" filter="url(#glow)"/>
+  <circle cx="175" cy="90" r="2.5" fill="#00e6e6" filter="url(#glow)"/>
 </svg>

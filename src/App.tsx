@@ -12,13 +12,11 @@ import LoginScreen from './components/LoginScreen';
 // Naye Components Import
 import KhaiwalTab from './components/KhaiwalTab';
 import MembershipTab from './components/MembershipTab';
-import AdminPanelTab from './components/AdminPanelTab'; // 🛡️ आपका नया एडमिन पैनल इम्पोर्ट
+import AdminPanelTab from './components/AdminPanelTab';
+import GeminiAssistantModal from './components/GeminiAssistantModal'; // 🤖 AI बोट इम्पोर्ट किया गया
 
 import { logoutUser } from './utils/auth';
-// 👇 यहाँ हमने आपका नया लाइव सिंक फंक्शन इम्पोर्ट किया है
 import { setupLiveSync } from './utils/storage'; 
-
-// 👇 यह LINE ठीक कर दी गई है (अब यह सही जगह से फाइल उठाएगा)
 import StrategyCalculator from './components/StrategyCalculator';
 
 // --- नया वेलकम सेक्शन (Welcome Mission Component) ---
@@ -192,16 +190,32 @@ const CalculatorTab = () => {
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState<string>('super-admin'); // 👑 'super-admin' या 'sub-admin' रोल हैंडल करने के लिए
+  const [userRole, setUserRole] = useState<string>('super-admin'); 
   
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [nextGame, setNextGame] = useState({ name: 'LOAD...', time: '00:00:00' });
+  
+  // 🤖 AI Bot State
+  const [isBotOpen, setIsBotOpen] = useState(false);
+  // 🌐 Offline tracker
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   useEffect(() => {
     setupLiveSync();
   }, []);
 
-  // PWA Install Logic
+  // Offline detection logic
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   useEffect(() => {
     const handleBeforeInstall = (e: any) => {
         e.preventDefault();
@@ -211,21 +225,6 @@ export default function App() {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
 
-  const handleInstallClick = () => {
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choiceResult: any) => {
-            if (choiceResult.outcome === 'accepted') {
-                console.log('User accepted the A2HS prompt');
-            } else {
-                console.log('User dismissed the A2HS prompt');
-            }
-            setDeferredPrompt(null);
-        });
-    }
-  };
-
-  // Live Timer Logic
   useEffect(() => {
     const formatTime = (seconds: number) => {
         const h = Math.floor(seconds / 3600);
@@ -264,7 +263,6 @@ export default function App() {
     const sessionAuth = sessionStorage.getItem('is_auth');
     if (sessionAuth === 'true') setIsAuthenticated(true);
     
-    // सत्र से रोल लोड करें (डिफ़ॉल्ट सुपर एडमिन)
     const sessionRole = sessionStorage.getItem('user_role') || 'super-admin';
     setUserRole(sessionRole);
   }, []);
@@ -276,7 +274,20 @@ export default function App() {
     setActiveTab('home');
   };
 
-  // 👇 यहाँ हमने बदलाव किया है ताकि लॉगिन स्क्रीन के ऊपर वेलकम मैसेज दिखे
+  const handleInstallClick = () => {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult: any) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('User accepted the A2HS prompt');
+            } else {
+                console.log('User dismissed the A2HS prompt');
+            }
+            setDeferredPrompt(null);
+        });
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#051014] text-slate-200 font-sans flex justify-center items-center p-4 relative overflow-hidden">
@@ -292,13 +303,19 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#051014] text-slate-200 font-sans selection:bg-[#e6007a]/30 flex justify-center relative overflow-hidden">
       
-      {/* एनिमेटेड बैकग्राउंड (पीकॉक थीम की हल्की चमक) */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#e6007a]/10 via-[#051014] to-[#008080]/10 animate-pulse pointer-events-none"></div>
 
       <div className="w-full max-w-md relative min-h-screen bg-[#051014]/95 backdrop-blur-sm shadow-2xl flex flex-col border-x border-[#008080]/30">
         
+        {/* 🌐 Offline Warning Banner */}
+        {isOffline && (
+            <div className="bg-red-500 text-white text-xs font-bold text-center py-1.5 animate-pulse">
+                ⚠️ इंटरनेट कनेक्शन टूट गया है। कृपया नेटवर्क चेक करें।
+            </div>
+        )}
+
         {/* === TOP HEADER PANEL === */}
-        <div className="bg-[#0b171e] px-4 py-3 flex justify-between items-center sticky top-0 z-50 shadow-[0_4px_15px_rgba(0,128,128,0.1)] border-b border-[#008080]/30">
+        <div className="bg-[#0b171e] px-4 py-3 flex justify-between items-center sticky top-0 z-40 shadow-[0_4px_15px_rgba(0,128,128,0.1)] border-b border-[#008080]/30">
             {/* Live Watch */}
             <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 bg-[#e6007a] rounded-full animate-pulse shadow-[0_0_8px_rgba(230,0,122,0.8)]"></div>
@@ -310,16 +327,30 @@ export default function App() {
 
             {/* Top Navigation Icons */}
             <div className="flex items-center gap-2">
-                {/* 🛡️ नया एडमिन पैनल शील्ड बटन */}
-                <button 
-                  onClick={() => setActiveTab('admin')} 
-                  className={`p-2 rounded-xl transition-all duration-300 border ${activeTab === 'admin' ? 'bg-[#e6007a] border-[#e6007a] text-white shadow-[0_0_15px_rgba(230,0,122,0.5)] scale-105' : 'bg-[#051014] border-[#008080]/40 text-slate-400 hover:text-white hover:border-[#e6007a]/50 hover:bg-[#e6007a]/10'}`} 
-                  title="नियंत्रण पैनल (Admin)"
+                
+                {/* 🛡️ एडमिन पैनल शील्ड (सिर्फ एडमिन के लिए) */}
+                {(userRole === 'super-admin' || userRole === 'sub-admin') && (
+                  <button 
+                    onClick={() => setActiveTab('admin')} 
+                    className={`p-2 rounded-xl transition-all duration-300 border ${activeTab === 'admin' ? 'bg-[#e6007a] border-[#e6007a] text-white shadow-[0_0_15px_rgba(230,0,122,0.5)] scale-105' : 'bg-[#051014] border-[#008080]/40 text-slate-400 hover:text-white hover:border-[#e6007a]/50 hover:bg-[#e6007a]/10'}`} 
+                    title="नियंत्रण पैनल (Admin)"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </button>
+                )}
+
+                {/* 📩 ईमेल सपोर्ट बटन (आपकी ईमेल आईडी सेट कर दी गई है) */}
+                <a 
+                    href="mailto:Kuldeepuberpune@gmail.com?subject=Sahil Master System - User Help Needed" 
+                    className="p-2 rounded-xl transition-all duration-300 border bg-[#051014] border-[#008080]/40 text-slate-400 hover:text-white hover:border-[#00e6e6]/80 hover:bg-[#00e6e6]/20" 
+                    title="ईमेल सपोर्ट"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                </button>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                </a>
 
                 {/* लेज़र कैलकुलेटर आइकॉन */}
                 <button onClick={() => setActiveTab('strategy')} className={`p-2 rounded-xl transition-all duration-300 border ${activeTab==='strategy' ? 'bg-[#e6007a] border-[#e6007a] text-white shadow-[0_0_15px_rgba(230,0,122,0.5)] scale-105' : 'bg-[#051014] border-[#008080]/40 text-slate-400 hover:text-white hover:border-[#e6007a]/50 hover:bg-[#e6007a]/10'}`} title="Ledger Strategy">
@@ -331,21 +362,14 @@ export default function App() {
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                     </button>
                 )}
-                <button onClick={() => setActiveTab('calculator')} className={`p-2 rounded-xl transition-all duration-300 border ${activeTab==='calculator' ? 'bg-[#008080] border-[#008080] text-white shadow-[0_0_15px_rgba(0,128,128,0.5)] scale-105' : 'bg-[#051014] border-[#008080]/40 text-slate-400 hover:text-white hover:border-[#008080]/80 hover:bg-[#008080]/20'}`}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                </button>
-                <button onClick={() => setActiveTab('diary')} className={`p-2 rounded-xl transition-all duration-300 border ${activeTab==='diary' ? 'bg-[#008080] border-[#008080] text-white shadow-[0_0_15px_rgba(0,128,128,0.5)] scale-105' : 'bg-[#051014] border-[#008080]/40 text-slate-400 hover:text-white hover:border-[#008080]/80 hover:bg-[#008080]/20'}`}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477-4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-                </button>
             </div>
         </div>
 
         <TargetTracker />
         
-        {/* Main Content Area - एनिमेशन के साथ */}
+        {/* Main Content Area */}
         <div className="overflow-y-auto flex-1 w-full pb-20 p-2 sm:p-4">
           <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Purane Tabs */}
             {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} onLogout={handleLogout} />}
             {activeTab === 'predict' && <PredictTab />}
             {activeTab === 'result' && <ResultTab />}
@@ -353,16 +377,12 @@ export default function App() {
             {activeTab === 'tracker' && <TrackerTab />}
             {activeTab === 'khaiwal' && <KhaiwalTab />}
             {activeTab === 'membership' && <MembershipTab />}
-
-            {/* Naye Tabs */}
             {activeTab === 'calculator' && <CalculatorTab />}
             {activeTab === 'diary' && <DiaryTab />}
-            
-            {/* नया स्ट्रेटेजी कैलकुलेटर टैब */}
             {activeTab === 'strategy' && <StrategyCalculator />}
 
-            {/* 🛡️ नया एडमिन पैनल टैब स्क्रीन */}
-            {activeTab === 'admin' && (
+            {/* 🛡️ एडमिन पैनल टैब */}
+            {activeTab === 'admin' && (userRole === 'super-admin' || userRole === 'sub-admin') && (
               <AdminPanelTab userRole={userRole} setUserRole={setUserRole} />
             )}
           </div>
@@ -370,6 +390,21 @@ export default function App() {
         
         {/* Niche ka Navigation Bar */}
         <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+        
+        {/* 💬 Floating AI Bot Button (यहाँ बोट का आइकॉन और पॉपअप है) */}
+        <button
+            onClick={() => setIsBotOpen(true)}
+            className="fixed bottom-24 right-4 z-40 bg-gradient-to-r from-[#00e6e6] to-[#008080] text-[#051014] p-3.5 rounded-full shadow-[0_0_20px_rgba(0,230,230,0.4)] hover:scale-110 transition-transform flex items-center justify-center border border-[#00e6e6]/50"
+            title="AI हेल्प असिस्टेंट"
+        >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+        </button>
+
+        {/* 🤖 Modal Window for Gemini Bot */}
+        {isBotOpen && <GeminiAssistantModal onClose={() => setIsBotOpen(false)} />}
+
       </div>
     </div>
   );

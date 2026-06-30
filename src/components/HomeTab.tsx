@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Zap, Save, LogOut, Shield, Users, Cloud, Bot, AlertTriangle, BookOpen, ChevronDown, ChevronUp, TrendingUp, ShieldCheck, Banknote, BrainCircuit, Info } from 'lucide-react';
+import { Zap, Save, LogOut, Shield, Users, Cloud, Bot, AlertTriangle, BookOpen, ChevronDown, ChevronUp, TrendingUp, ShieldCheck, Banknote, BrainCircuit, Info, Activity } from 'lucide-react';
 import UserManagementModal from './UserManagementModal';
 import GeminiAssistantModal from './GeminiAssistantModal';
 import { getCurrentUser, getCurrentRole } from '../utils/auth';
@@ -44,6 +44,18 @@ export default function HomeTab({ setActiveTab, onLogout }: { setActiveTab: (t: 
     return { successRate, totalPass, totalResolved, pending, l1Pass, l2Pass, l3Pass, totalFail };
   }, []);
 
+  // --- DISCIPLINE SCORE LOGIC (नया अनुशासन मीटर) ---
+  const disciplineScore = useMemo(() => {
+    let score = 100;
+    // पेंडिंग एंट्रीज (समय पर हिसाब न डालना) पर पेनाल्टी (-15 प्रति पेंडिंग)
+    if (stats.pending > 0) score -= (stats.pending * 15);
+    
+    // बहुत ज्यादा लगातार फेल (Overtrading) पर पेनाल्टी (-5 प्रति फेल, 5 फेल के बाद)
+    if (stats.totalFail > 5) score -= ((stats.totalFail - 5) * 5);
+    
+    return Math.max(10, Math.min(100, score)); // स्कोर 10 से 100 के बीच ही रहेगा
+  }, [stats.pending, stats.totalFail]);
+
   const handleLocalBackup = () => {
     downloadBackupData();
   };
@@ -51,7 +63,7 @@ export default function HomeTab({ setActiveTab, onLogout }: { setActiveTab: (t: 
   return (
     <div className="p-4 space-y-6 pb-24 animate-in fade-in duration-500">
       {/* === Header === */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-2">
         <div>
           <h1 className="text-xl font-bold text-teal-400">साहिल मास्टर सिस्टम</h1>
           <p className="text-sm text-slate-400 mt-1 flex items-center gap-1">
@@ -62,6 +74,75 @@ export default function HomeTab({ setActiveTab, onLogout }: { setActiveTab: (t: 
         <button onClick={onLogout} className="text-slate-400 hover:text-white p-2 bg-[#111827] border border-slate-800 rounded-xl transition-colors">
           <LogOut className="w-5 h-5" />
         </button>
+      </div>
+
+      {/* === Discipline Score (अनुशासन मीटर) === */}
+      <div className="bg-[#111827] border border-slate-800 rounded-xl p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Activity className="w-5 h-5 text-teal-400" /> अनुशासन मीटर
+          </h2>
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-lg border ${disciplineScore >= 80 ? 'bg-green-500/10 text-green-400 border-green-500/30' : disciplineScore >= 50 ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
+            {disciplineScore >= 80 ? 'Excellent' : disciplineScore >= 50 ? 'Warning' : 'Danger'}
+          </span>
+        </div>
+
+        <div className="flex flex-col items-center justify-center">
+          <div className="relative w-32 h-32 flex items-center justify-center">
+            {/* SVG Circular Progress */}
+            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+              {/* Background Circle */}
+              <path
+                className="text-slate-800"
+                stroke="currentColor"
+                strokeWidth="3.5"
+                fill="none"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+              {/* Foreground Progress Circle */}
+              <path
+                className={`${disciplineScore >= 80 ? 'text-green-500' : disciplineScore >= 50 ? 'text-orange-500' : 'text-red-500'} transition-all duration-1000 ease-out`}
+                strokeDasharray={`${disciplineScore}, 100`}
+                stroke="currentColor"
+                strokeWidth="3.5"
+                fill="none"
+                strokeLinecap="round"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+            </svg>
+            {/* Center Text */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-3xl font-black text-white">{disciplineScore}%</span>
+              <span className="text-[10px] text-slate-400 mt-0.5">SCORE</span>
+            </div>
+          </div>
+
+          {/* Warning / Success Message */}
+          <div className="mt-5 w-full">
+            {disciplineScore >= 80 ? (
+              <div className="flex items-start gap-3 bg-green-500/10 p-3 rounded-xl border border-green-500/20">
+                <ShieldCheck className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-green-400/90 leading-relaxed">
+                  <strong>बेहतरीन!</strong> आप सिस्टम के नियमों का पूरी तरह पालन कर रहे हैं। लालच पर आपका कंट्रोल एकदम परफेक्ट है।
+                </p>
+              </div>
+            ) : disciplineScore >= 50 ? (
+              <div className="flex items-start gap-3 bg-orange-500/10 p-3 rounded-xl border border-orange-500/20">
+                <AlertTriangle className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-orange-400/90 leading-relaxed">
+                  <strong>चेतावनी:</strong> आपका अनुशासन स्कोर गिर रहा है। समय पर रिजल्ट अपडेट करें और ओवरट्रेडिंग से बचें।
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+                <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-400/90 leading-relaxed">
+                  <strong>खतरा!</strong> आपका स्कोर बहुत कम है। यह जुआ नहीं है! "जीतने के बाद No Play" नियम को याद रखें और शांत हो जाएँ।
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* === Stats Section === */}

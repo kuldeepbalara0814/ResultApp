@@ -114,7 +114,7 @@ export default function PredictTab() {
         }
       }
 
-      // ===== आपका फॉर्मूला: Cross Month Family Check (Month Shift) =====
+      // ===== Cross Month Family Check =====
       const getTargetDates = (baseDateStr: string, monthsBack: number) => {
         const [y, m, d] = baseDateStr.split('-').map(Number);
         const dates: string[] = [];
@@ -145,7 +145,6 @@ export default function PredictTab() {
         }
       });
 
-      // 10 Parameters (Sync with formulas.ts)
       let res = calculatePrediction(
         inputs, selectedFormulas, pastMurda, currentMonthNums, 
         todaysRes.slice(0, 4), past4DaysMurda, past10DaysNums, past15DaysNums, pastMonth1Nums, pastMonth2Nums
@@ -173,7 +172,6 @@ export default function PredictTab() {
     }, 800);
   };
 
-  // Safe/Pro के हिसाब से नंबर कॉपी करना
   const displayedJodis = useMemo(() => {
     if (!result) return [];
     if (playMode === 'safe') return result.l1;
@@ -196,7 +194,6 @@ export default function PredictTab() {
     setTimeout(() => setLogged(false), 2000);
   };
 
-  // रिपोर्ट डाउनलोड (हिंदी फिक्स के साथ)
   const downloadReport = () => {
       if (!result || !result.report) return;
       const element = document.createElement("a");
@@ -213,7 +210,6 @@ export default function PredictTab() {
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-xl font-bold text-teal-400">आज की प्रेडिक्शन</h1>
         
-        {/* === SAFE MODE / PRO MODE BUTTONS === */}
         <div className="flex bg-[#111827] rounded-xl p-1 border border-slate-800">
           <button 
             onClick={() => setPlayMode('safe')}
@@ -352,7 +348,7 @@ export default function PredictTab() {
               </div>
 
               <div className="bg-[#0B1120] rounded-xl p-4 border border-slate-800 text-center font-mono">
-                <div className="text-slate-400 text-sm mb-1">{selectedGame} प्ले इन्फो</div>
+                <div className="text-slate-400 text-sm mb-1">{selectedGame} प्ले इन्फो ({playMode === 'safe' ? 'Safe' : 'Pro'})</div>
                 <div className="text-2xl font-bold text-white mb-1">
                   {currentRate} <span className="text-sm font-normal text-slate-500">Into</span>
                 </div>
@@ -401,7 +397,6 @@ export default function PredictTab() {
             </div>
           </div>
 
-          {/* L2 और L3 अब हमेशा दिखेंगे */}
           <div className="border border-blue-500/30 rounded-2xl overflow-hidden bg-[#111827]">
             <div className="bg-blue-500/10 px-4 py-3 border-b border-blue-500/20">
               <h3 className="text-blue-500 font-medium">L2 - मेन ({result.l2.length} जोड़ी)</h3>
@@ -433,4 +428,22 @@ export default function PredictTab() {
           {result.tokari && result.tokari.length > 0 && (
             <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5">
               <h3 className="text-white font-semibold mb-4">टोकरी काउंट्स</h3>
-              <div className="grid grid-cols-4 md:grid-cols-5 gap-
+              <div className="grid grid-cols-4 md:grid-cols-5 gap-3">
+                {result.tokari.map((item, i) => (
+                  <div key={i} className="bg-[#374151] rounded-lg p-2 flex flex-col items-center justify-center border border-slate-700/50">
+                    <div className="text-white font-mono font-medium text-sm md:text-base">
+                      {item.id}
+                    </div>
+                    <div className="text-xs text-slate-400 mt-1">
+                      {item.count}x
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,25 +1,24 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Zap, Check, Copy, Send, Target, RefreshCw, FileText, Shield, ShieldCheck, BarChart2 } from 'lucide-react'; 
+import { Zap, Check, Copy, Send, Target, RefreshCw, FileText, Shield, ShieldCheck } from 'lucide-react'; 
 import { PredictionInput } from '../types';
 import { calculatePrediction, ExtendedPredictionResult } from '../utils/formulas';
 import { calculateLedger } from '../utils/ledger';
 import { saveTrackerEntry, getAllResultsSorted } from '../utils/storage';
 
-// यहाँ एक्यूरेसी (%) सेट है
 const FORMULAS = [
-  { id: '2', label: '2 - Evergreen', accuracy: '82%' },
-  { id: '3', label: '3 - Universal', accuracy: '78%' },
-  { id: '4', label: '4 - Magic', accuracy: '85%' },
-  { id: '5', label: '5 - Day Fix', accuracy: '74%' },
-  { id: '6', label: '6 - Murda', accuracy: '89%' },
-  { id: '7', label: '7 - Haruf', accuracy: '70%' },
-  { id: '8', label: '8 - Baki', accuracy: '65%' },
-  { id: '9', label: '9 - Month Trend', accuracy: '80%' }
+  { id: '2', label: '2 - Evergreen' },
+  { id: '3', label: '3 - Universal' },
+  { id: '4', label: '4 - Magic' },
+  { id: '5', label: '5 - Day Fix' },
+  { id: '6', label: '6 - Murda' },
+  { id: '7', label: '7 - Haruf' },
+  { id: '8', label: '8 - Baki' },
+  { id: '9', label: '9 - Month Trend' }
 ];
 
 export default function PredictTab() {
   const [inputMode, setInputMode] = useState<'auto' | 'manual'>('auto');
-  const [playMode, setPlayMode] = useState<'safe' | 'pro'>('pro'); // Safe Mode / Pro Mode
+  const [playMode, setPlayMode] = useState<'safe' | 'pro'>('pro'); 
   
   const [inputs, setInputs] = useState<PredictionInput>({
     date: new Date().toISOString().split('T')[0],
@@ -164,7 +163,6 @@ export default function PredictTab() {
     setTimeout(() => setLogged(false), 2000);
   };
 
-  // रिपोर्ट डाउनलोड फिक्स (\ufeff) के साथ
   const downloadReport = () => {
       if (!result || !result.report) return;
       const element = document.createElement("a");
@@ -251,13 +249,9 @@ export default function PredictTab() {
         </div>
       </div>
 
-      {/* === 30 DAYS BACKTESTING (%) BUTTONS === */}
+      {/* === फॉर्मूला चुनें (बिना % के साफ़-सुथरा) === */}
       <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-5">
-        <h2 className="text-white font-semibold flex items-center gap-2">
-          <BarChart2 className="w-4 h-4 text-teal-400" />
-          फॉर्मूला और 30 दिन की पासिंग (%)
-        </h2>
-        
+        <h2 className="text-white font-semibold">फॉर्मूला चुनें</h2>
         <div className="grid grid-cols-2 gap-4">
           {FORMULAS.map(formula => {
             const isSelected = selectedFormulas.includes(formula.id);
@@ -265,19 +259,14 @@ export default function PredictTab() {
               <button 
                 key={formula.id}
                 onClick={() => toggleFormula(formula.id)}
-                className="flex items-center justify-between text-left bg-[#0B1120] p-2.5 rounded-xl border border-slate-800/60 hover:border-slate-700 transition-colors w-full"
+                className="flex items-center space-x-3 text-left"
               >
-                <div className="flex items-center space-x-2.5">
-                  <div className={`w-4 h-4 rounded-full flex items-center justify-center border transition-colors ${
-                    isSelected ? 'bg-teal-400 border-teal-400' : 'border-slate-600'
-                  }`}>
-                    {isSelected && <Check className="w-2.5 h-2.5 text-slate-900 stroke-[3]" />}
-                  </div>
-                  <span className="text-xs text-slate-200">{formula.label}</span>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors ${
+                  isSelected ? 'bg-teal-400 border-teal-400' : 'border-slate-600'
+                }`}>
+                  {isSelected && <Check className="w-3 h-3 text-slate-900 stroke-[3]" />}
                 </div>
-                <span className="text-[11px] bg-teal-500/10 text-teal-400 font-mono font-bold px-1.5 py-0.5 rounded">
-                  {formula.accuracy}
-                </span>
+                <span className="text-sm text-slate-200">{formula.label}</span>
               </button>
             )
           })}

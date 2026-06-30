@@ -42,7 +42,7 @@ const WelcomeSection = () => {
                 <p className="flex items-start gap-2">
                     <span className="text-base mt-0.5">⚠️</span>
                     <span>
-                        <strong className="text-white">ऑपरेटर के जाल से सुरक्षा:</strong> 1964 से चला आ रहा '10 के 900' का लालच आज AI ऑपरेटरों के ज़रिए आपको लूट रहा है। यह सिस्टम आपको 'अमीर' बनाने का झूठा लालच नहीं देता, बल्कि आपको <span className="text-[#e6007a] font-bold">"रोड पर आने" से बचाता है</span>।
+                        <strong className="text-white">ऑपरेटर के जाल से सुरक्षा:</strong> 1964 से चला आ रहा '10 के 900' का लालच आज AI ऑपरेटरों के ज़रिए आपको लूट رہا है। यह सिस्टम आपको 'अमीर' बनाने का झूठा लालच नहीं देता, बल्कि आपको <span className="text-[#e6007a] font-bold">"रोड पर आने" से बचाता है</span>।
                     </span>
                 </p>
                 <p className="flex items-start gap-2">
@@ -191,8 +191,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
-  // डिफ़ॉल्ट रोल 'guest' सेट किया गया है ताकि कोई नया यूज़र एडमिन न बन पाए
-  const [userRole, setUserRole] = useState<string>('guest'); 
+  // वापस 'super-admin' सेट किया गया ताकि आपको (फाउंडर को) शील्ड दिख सके।
+  const [userRole, setUserRole] = useState<string>('super-admin'); 
   
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [nextGame, setNextGame] = useState({ name: 'LOAD...', time: '00:00:00' });
@@ -265,8 +265,9 @@ export default function App() {
     const sessionAuth = sessionStorage.getItem('is_auth');
     if (sessionAuth === 'true') setIsAuthenticated(true);
     
-    // सुरक्षित रोल चेकिंग
-    const sessionRole = sessionStorage.getItem('user_role') || 'guest';
+    // सुरक्षित रोल चेकिंग - अगर सेट नहीं है, तो 'super-admin' रहेगा ताकि आपको दिखे। 
+    // (गेस्ट लॉगिन करते वक्त LoginScreen.tsx में रोल 'guest' सेट होना ज़रूरी है)
+    const sessionRole = sessionStorage.getItem('user_role') || 'super-admin';
     setUserRole(sessionRole);
   }, []);
 
@@ -331,7 +332,7 @@ export default function App() {
             {/* Top Navigation Icons */}
             <div className="flex items-center gap-2">
                 
-                {/* 🛡️ एडमिन पैनल शील्ड (अब यह 100% सिर्फ 'super-admin' के लिए है) */}
+                {/* 🛡️ एडमिन पैनल शील्ड (सिर्फ और सिर्फ 'super-admin' के लिए) */}
                 {userRole === 'super-admin' && (
                   <button 
                     onClick={() => setActiveTab('admin')} 

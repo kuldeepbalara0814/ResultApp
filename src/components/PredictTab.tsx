@@ -18,7 +18,7 @@ const FORMULAS = [
 
 export default function PredictTab() {
   const [inputMode, setInputMode] = useState<'auto' | 'manual'>('auto');
-  const [playMode, setPlayMode] = useState<'safe' | 'pro'>('pro'); 
+  const [playMode, setPlayMode] = useState<'pro' | 'safe'>('pro'); 
   
   const [inputs, setInputs] = useState<PredictionInput>({
     date: new Date().toISOString().split('T')[0],
@@ -114,9 +114,41 @@ export default function PredictTab() {
         }
       }
 
+      // ===== आपका फॉर्मूला: Cross Month Family Check (Month Shift) =====
+      const getTargetDates = (baseDateStr: string, monthsBack: number) => {
+        const [y, m, d] = baseDateStr.split('-').map(Number);
+        const dates: string[] = [];
+        for (let i = 0; i < 3; i++) {
+          const dateObj = new Date(y, m - 1 - monthsBack, d - i);
+          const yyyy = dateObj.getFullYear();
+          const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const dd = String(dateObj.getDate()).padStart(2, '0');
+          dates.push(`${yyyy}-${mm}-${dd}`);
+        }
+        return dates;
+      };
+
+      const m1Dates = getTargetDates(inputs.date, 1);
+      const m2Dates = getTargetDates(inputs.date, 2);
+
+      const pastMonth1Nums: string[] = [];
+      const pastMonth2Nums: string[] = [];
+
+      pastResults.forEach(r => {
+        if (m1Dates.includes(r.date)) {
+          if (r.fd) pastMonth1Nums.push(r.fd); if (r.gb) pastMonth1Nums.push(r.gb);
+          if (r.gl) pastMonth1Nums.push(r.gl); if (r.ds) pastMonth1Nums.push(r.ds);
+        }
+        if (m2Dates.includes(r.date)) {
+          if (r.fd) pastMonth2Nums.push(r.fd); if (r.gb) pastMonth2Nums.push(r.gb);
+          if (r.gl) pastMonth2Nums.push(r.gl); if (r.ds) pastMonth2Nums.push(r.ds);
+        }
+      });
+
+      // 10 Parameters (Sync with formulas.ts)
       let res = calculatePrediction(
         inputs, selectedFormulas, pastMurda, currentMonthNums, 
-        todaysRes.slice(0, 4), past4DaysMurda, past10DaysNums, past15DaysNums
+        todaysRes.slice(0, 4), past4DaysMurda, past10DaysNums, past15DaysNums, pastMonth1Nums, pastMonth2Nums
       );
       
       const userRole = sessionStorage.getItem('sahil_master_current_role') || 'guest';
@@ -141,6 +173,7 @@ export default function PredictTab() {
     }, 800);
   };
 
+  // Safe/Pro के हिसाब से नंबर कॉपी करना
   const displayedJodis = useMemo(() => {
     if (!result) return [];
     if (playMode === 'safe') return result.l1;
@@ -163,6 +196,7 @@ export default function PredictTab() {
     setTimeout(() => setLogged(false), 2000);
   };
 
+  // रिपोर्ट डाउनलोड (हिंदी फिक्स के साथ)
   const downloadReport = () => {
       if (!result || !result.report) return;
       const element = document.createElement("a");
@@ -175,7 +209,7 @@ export default function PredictTab() {
   };
 
   return (
-    <div className="p-4 space-y-6 pb-24">
+    <div className="max-w-2xl mx-auto p-4 space-y-6 pb-24">
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-xl font-bold text-teal-400">आज की प्रेडिक्शन</h1>
         
@@ -196,7 +230,7 @@ export default function PredictTab() {
         </div>
       </div>
 
-      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-6">
+      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-6 shadow-md">
         <div className="flex items-center justify-between">
           <h2 className="text-white font-semibold">नंबर दर्ज करें</h2>
           <div className="flex bg-[#0B1120] rounded-lg p-1 border border-slate-800">
@@ -247,11 +281,17 @@ export default function PredictTab() {
             </div>
           ))}
         </div>
+        
+        {inputMode === 'auto' && (
+          <div className="text-xs text-slate-500 flex items-center justify-center gap-1">
+            <RefreshCw className="w-3 h-3" /> लेटेस्ट रिजल्ट से डेटा ऑटो-फेच किया गया है।
+          </div>
+        )}
       </div>
 
-      {/* === फॉर्मूला चुनें (बिना % के साफ़-सुथरा) === */}
-      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-5">
+      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-5 shadow-md">
         <h2 className="text-white font-semibold">फॉर्मूला चुनें</h2>
+        
         <div className="grid grid-cols-2 gap-4">
           {FORMULAS.map(formula => {
             const isSelected = selectedFormulas.includes(formula.id);
@@ -285,7 +325,7 @@ export default function PredictTab() {
       {result && (
         <div className="space-y-6 mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h2 className="text-2xl font-bold text-teal-400 text-center">
-            {playMode === 'safe' ? '🛡️ Safe Mode रिजल्ट' : '🚀 Pro Mode रिजल्ट'}
+             {playMode === 'safe' ? '🛡️ Safe Mode रिजल्ट' : '🚀 Pro Mode रिजल्ट'}
           </h2>
 
           <div className="bg-gradient-to-b from-[#374151] to-[#111827] border border-slate-700 rounded-2xl p-5 shadow-xl">
@@ -312,7 +352,7 @@ export default function PredictTab() {
               </div>
 
               <div className="bg-[#0B1120] rounded-xl p-4 border border-slate-800 text-center font-mono">
-                <div className="text-slate-400 text-sm mb-1">{selectedGame} प्ले इन्फो ({playMode === 'safe' ? 'Safe' : 'Pro'})</div>
+                <div className="text-slate-400 text-sm mb-1">{selectedGame} प्ले इन्फो</div>
                 <div className="text-2xl font-bold text-white mb-1">
                   {currentRate} <span className="text-sm font-normal text-slate-500">Into</span>
                 </div>
@@ -335,7 +375,6 @@ export default function PredictTab() {
                   <Target className="w-5 h-5" /> ट्रैकर में प्ले कन्फर्म करें
                 </button>
 
-                {/* REPORT DOWNLOAD BUTTON */}
                 <button 
                   onClick={downloadReport}
                   className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2"
@@ -350,56 +389,48 @@ export default function PredictTab() {
           <div className="border border-green-500/30 rounded-2xl overflow-hidden bg-[#111827]">
             <div className="bg-green-500/10 px-4 py-3 border-b border-green-500/20 flex justify-between items-center">
               <h3 className="text-green-500 font-medium">L1 - सुपर VIP ({result.l1.length} जोड़ी)</h3>
-              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded font-bold">Safe Mode Active</span>
+              {playMode === 'safe' && <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded font-bold">Safe Mode Active</span>}
             </div>
             <div className="p-4 flex flex-wrap gap-3">
               {result.l1.map((num, i) => (
-                <div key={i} className="bg-green-500/20 text-green-400 font-mono text-lg px-3 py-2 rounded-lg border border-green-500/30">{num}</div>
+                <div key={i} className="bg-green-500/20 text-green-400 font-mono text-lg px-3 py-2 rounded-lg border border-green-500/30">
+                  {num}
+                </div>
               ))}
+              {result.l1.length === 0 && <p className="text-slate-500 text-sm">कोई नंबर नहीं</p>}
             </div>
           </div>
 
-          {playMode === 'pro' && (
-            <>
-              <div className="border border-blue-500/30 rounded-2xl overflow-hidden bg-[#111827]">
-                <div className="bg-blue-500/10 px-4 py-3 border-b border-blue-500/20">
-                  <h3 className="text-blue-500 font-medium">L2 - मेन ({result.l2.length} जोड़ी)</h3>
+          {/* L2 और L3 अब हमेशा दिखेंगे */}
+          <div className="border border-blue-500/30 rounded-2xl overflow-hidden bg-[#111827]">
+            <div className="bg-blue-500/10 px-4 py-3 border-b border-blue-500/20">
+              <h3 className="text-blue-500 font-medium">L2 - मेन ({result.l2.length} जोड़ी)</h3>
+            </div>
+            <div className="p-4 flex flex-wrap gap-3">
+              {result.l2.map((num, i) => (
+                <div key={i} className="bg-blue-500/20 text-blue-400 font-mono text-lg px-3 py-2 rounded-lg border border-blue-500/30">
+                  {num}
                 </div>
-                <div className="p-4 flex flex-wrap gap-3">
-                  {result.l2.map((num, i) => (
-                    <div key={i} className="bg-blue-500/20 text-blue-400 font-mono text-lg px-3 py-2 rounded-lg border border-blue-500/30">{num}</div>
-                  ))}
-                </div>
-              </div>
+              ))}
+              {result.l2.length === 0 && <p className="text-slate-500 text-sm">कोई नंबर नहीं</p>}
+            </div>
+          </div>
 
-              <div className="border border-teal-400/30 rounded-2xl overflow-hidden bg-[#111827]">
-                <div className="bg-teal-400/10 px-4 py-3 border-b border-teal-400/20">
-                  <h3 className="text-teal-400 font-medium">L3 - सपोर्ट ({result.l3.length} जोड़ी)</h3>
+          <div className="border border-teal-400/30 rounded-2xl overflow-hidden bg-[#111827]">
+            <div className="bg-teal-400/10 px-4 py-3 border-b border-teal-400/20">
+              <h3 className="text-teal-400 font-medium">L3 - सपोर्ट ({result.l3.length} जोड़ी)</h3>
+            </div>
+            <div className="p-4 flex flex-wrap gap-3">
+              {result.l3.map((num, i) => (
+                <div key={i} className="bg-teal-400/20 text-teal-300 font-mono text-lg px-3 py-2 rounded-lg border border-teal-400/30">
+                  {num}
                 </div>
-                <div className="p-4 flex flex-wrap gap-3">
-                  {result.l3.map((num, i) => (
-                    <div key={i} className="bg-teal-400/20 text-teal-300 font-mono text-lg px-3 py-2 rounded-lg border border-teal-400/30">{num}</div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
+              ))}
+              {result.l3.length === 0 && <p className="text-slate-500 text-sm">कोई नंबर नहीं</p>}
+            </div>
+          </div>
 
           {result.tokari && result.tokari.length > 0 && (
             <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5">
               <h3 className="text-white font-semibold mb-4">टोकरी काउंट्स</h3>
-              <div className="grid grid-cols-4 md:grid-cols-5 gap-3">
-                {result.tokari.map((item, i) => (
-                  <div key={i} className="bg-[#374151] rounded-lg p-2 flex flex-col items-center justify-center border border-slate-700/50">
-                    <div className="text-white font-mono font-medium text-sm md:text-base">{item.id}</div>
-                    <div className="text-xs text-slate-400 mt-1">{item.count}x</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+              <div className="grid grid-cols-4 md:grid-cols-5 gap-

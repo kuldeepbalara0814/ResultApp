@@ -20,13 +20,54 @@ import { setupLiveSync } from './utils/storage';
 // 👇 यह लाइन ठीक कर दी गई है (अब यह सही जगह से फाइल उठाएगा)
 import StrategyCalculator from './components/StrategyCalculator';
 
+// --- नया वेलकम सेक्शन (Welcome Mission Component) ---
+const WelcomeSection = () => {
+    return (
+        <div className="bg-[#0b171e] p-5 rounded-3xl border border-[#008080]/40 shadow-[0_8px_20px_rgba(0,128,128,0.15)] text-center animate-in fade-in zoom-in duration-500">
+            <h2 className="text-2xl font-bold text-[#00e6e6] mb-1 drop-shadow-[0_0_5px_rgba(0,230,230,0.4)] tracking-wide">
+                साहिल मास्टर सिस्टम
+            </h2>
+            <p className="text-[#e6007a] font-bold text-xs tracking-wider mb-4 uppercase">
+                "आपका पैसा, आपका कंट्रोल, हमारा डिसिप्लिन।"
+            </p>
+            
+            <div className="w-full h-px bg-[#008080]/20 mb-4"></div>
+            
+            <div className="text-left text-slate-300 text-[13px] space-y-3.5 leading-relaxed">
+                <p className="flex items-start gap-2">
+                    <span className="text-base mt-0.5">🛑</span>
+                    <span>
+                        <strong className="text-white">हम कोई सट्टा प्लेटफॉर्म या वॉलेट नहीं हैं:</strong> यहाँ न कोई UPI पेमेंट है, न कोई OTP। आपका पैसा आपके पास, आपके खुद के बैंक खाते में पूरी तरह सुरक्षित है।
+                    </span>
+                </p>
+                <p className="flex items-start gap-2">
+                    <span className="text-base mt-0.5">⚠️</span>
+                    <span>
+                        <strong className="text-white">ऑपरेटर के जाल से सुरक्षा:</strong> 1964 से चला आ रहा '10 के 900' का लालच आज AI ऑपरेटरों के ज़रिए आपको लूट रहा है। यह सिस्टम आपको 'अमीर' बनाने का झूठा लालच नहीं देता, बल्कि आपको <span className="text-[#e6007a] font-bold">"रोड पर आने" से बचाता है</span>।
+                    </span>
+                </p>
+                <p className="flex items-start gap-2">
+                    <span className="text-base mt-0.5">🤝</span>
+                    <span>
+                        <strong className="text-white">एक सच्चे दोस्त की तरह अनुशासन:</strong> 20 साल की रिसर्च से बना यह टूल आपको तब खेलने से रोकेगा (No Play) जब आपकी मेहनत की कमाई खतरे में होगी।
+                    </span>
+                </p>
+            </div>
+            
+            <div className="w-full h-px bg-[#008080]/20 mt-4 mb-3"></div>
+            <p className="text-[11px] text-slate-400 italic">
+                "जुड़िये और सट्टे के नशे को मैनेजमेंट में बदलिए।"
+            </p>
+        </div>
+    );
+};
+
 // --- टारगेट और ग्राफ लाइन (Target Trend Bar) ---
 const TargetTracker = () => {
     const [progress, setProgress] = useState(50);
     const [status, setStatus] = useState("बेस लेवल (शुरुआत)");
     const [isProfit, setIsProfit] = useState(true);
 
-    // लाइव अपडेट को पकड़ने के लिए इसे भी रिफ्रेश करने का लॉजिक
     const calculateTrend = () => {
         try {
             const history = JSON.parse(localStorage.getItem('sahil_master_tracker_v3') || '[]');
@@ -53,7 +94,6 @@ const TargetTracker = () => {
 
     useEffect(() => {
         calculateTrend();
-        // फायरबेस के लाइव अपडेट पर ग्राफ को भी तुरंत बदलने का लिसनर
         window.addEventListener('firebase-data-updated', calculateTrend);
         return () => window.removeEventListener('firebase-data-updated', calculateTrend);
     }, []);
@@ -155,7 +195,6 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [nextGame, setNextGame] = useState({ name: 'LOAD...', time: '00:00:00' });
 
-  // 👇 यहाँ हमने फायरबेस लाइव सिंक को चालू कर दिया है
   useEffect(() => {
     setupLiveSync();
   }, []);
@@ -231,8 +270,17 @@ export default function App() {
     setActiveTab('home');
   };
 
+  // 👇 यहाँ हमने बदलाव किया है ताकि लॉगिन स्क्रीन के ऊपर वेलकम मैसेज दिखे
   if (!isAuthenticated) {
-    return <LoginScreen onLogin={handleLogin} />;
+    return (
+      <div className="min-h-screen bg-[#051014] text-slate-200 font-sans flex justify-center items-center p-4 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#e6007a]/10 via-[#051014] to-[#008080]/10 animate-pulse pointer-events-none"></div>
+        <div className="w-full max-w-md flex flex-col gap-4 relative z-10">
+          <WelcomeSection />
+          <LoginScreen onLogin={handleLogin} />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -293,7 +341,7 @@ export default function App() {
             {activeTab === 'calculator' && <CalculatorTab />}
             {activeTab === 'diary' && <DiaryTab />}
             
-            {/* 👇 नया स्ट्रेटेजी कैलकुलेटर टैब */}
+            {/* नया स्ट्रेटेजी कैलकुलेटर टैब */}
             {activeTab === 'strategy' && <StrategyCalculator />}
           </div>
         </div>

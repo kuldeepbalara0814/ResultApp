@@ -1,14 +1,22 @@
 import React, { useState } from 'react';
-// 🛡️ फ़ायरबेस के ज़रूरी फंक्शन्स इम्पोर्ट किए
+// 🛡️ फ़ायरबेस के ज़रूरी फंक्शन्स
 import { doc, setDoc } from 'firebase/firestore'; 
-// 🎯 आपके स्क्रीनशॉट "8385.jpg" के आधार पर फ़ायरबेस का बिल्कुल सही रास्ता (Path)
 import { db } from '../firebase/config'; 
+
+// 🧠 AI शफल इंजन के लिए नए इम्पोर्ट्स
+import { getAllResultsSorted } from '../utils/storage'; 
+import { getShuffleSuggestion, saveWeights } from '../utils/formulas';
+import { BrainCircuit, Check, X, AlertTriangle, Activity } from 'lucide-react';
 
 export default function AdminPanelTab({ userRole, setUserRole }) {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [subAdminEmail, setSubAdminEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // 🧠 AI शफल के लिए स्टेट
+  const [aiSuggestion, setAiSuggestion] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // 👥 ग्राहकों की आईडी बनाने या पासवर्ड बदलने का असली फंक्शन
   const handleCreateUser = async (e) => {
@@ -16,7 +24,6 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
     setLoading(true);
 
     try {
-      // { merge: true } सुनिश्चित करता है कि पुराना कुछ भी डिलीट न हो, सिर्फ़ अपडेट हो
       await setDoc(doc(db, "users", userId.trim()), {
         username: userId.trim(),
         password: password.trim(),
@@ -68,7 +75,7 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
       setLoading(true);
       try {
         await setDoc(doc(db, "users", subAdminEmail.trim()), {
-          role: 'user', // रोल बदलकर नॉर्मल यूज़र कर दिया, डिलीट कुछ नहीं हुआ
+          role: 'user',
           updatedAt: new Date().toISOString()
         }, { merge: true });
 
@@ -79,6 +86,48 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
       } finally {
         setLoading(false);
       }
+    }
+  };
+
+  // 🧠 AI शफल इंजन को एनालाइज़ करने का फंक्शन
+  const handleAnalyzeOperator = () => {
+    setIsAnalyzing(true);
+    setAiSuggestion(null);
+
+    setTimeout(() => {
+      try {
+        const allResults = getAllResultsSorted();
+        const validResults = allResults.filter(r => r.fd || r.gb || r.gl || r.ds);
+        
+        const past15DaysNums = [];
+        validResults.slice(0, 15).forEach(r => {
+          if (r.fd) past15DaysNums.push(r.fd);
+          if (r.gb) past15DaysNums.push(r.gb);
+          if (r.gl) past15DaysNums.push(r.gl);
+          if (r.ds) past15DaysNums.push(r.ds);
+        });
+
+        const suggestion = getShuffleSuggestion(past15DaysNums);
+        setAiSuggestion(suggestion);
+
+        if (!suggestion.detected) {
+          alert("✅ AI रिपोर्ट: " + suggestion.message);
+        }
+      } catch (error) {
+        console.error("Analysis Error:", error);
+        alert("डेटा एनालाइज़ करने में समस्या आई।");
+      } finally {
+        setIsAnalyzing(false);
+      }
+    }, 1500); // 1.5s का फील देने के लिए डिले
+  };
+
+  // 🧠 AI सुझाव को मंज़ूरी (Approve) देने का फंक्शन
+  const handleApproveShuffle = () => {
+    if (aiSuggestion && aiSuggestion.proposedWeights) {
+      saveWeights(aiSuggestion.proposedWeights);
+      alert("✅ सफलता! AI ने फॉर्मूले के नए पॉइंट्स डेटाबेस में अपडेट कर दिए हैं। अब प्रेडिक्शन नई चाल के हिसाब से होगी।");
+      setAiSuggestion(null);
     }
   };
 
@@ -107,7 +156,55 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
         )}
       </div>
 
-      {/* 👑 केवल मुख्य एडमिन (Super Admin - आपको) को दिखेगा */}
+      {/* 🧠 केवल मुख्य एडमिन (Super Admin - आपको) को दिखेगा - AI SHUFFLE ENGINE */}
+      {userRole === 'super-admin' && (
+        <div className="bg-gradient-to-br from-[#0b171e] to-[#1a0b1e] p-5 rounded-2xl border border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.15)] mb-6">
+          <h3 className="text-sm font-bold text-purple-400 tracking-wider mb-2 flex items-center gap-2">
+            <BrainCircuit className="w-5 h-5" /> AI ऑटो-शफल (ऑपरेटर चाल ट्रैकर)
+          </h3>
+          <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+            यह सिस्टम पिछले 15 दिनों के डेटा का विश्लेषण करके ऑपरेटर की नई चाल (जैसे दाना ट्रैप या मुर्दा) को पकड़ता है। AI सिर्फ सलाह देगा, अंतिम मंज़ूरी आपकी होगी।
+          </p>
+
+          <button 
+            onClick={handleAnalyzeOperator}
+            disabled={isAnalyzing}
+            className="w-full bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/40 text-xs font-bold py-3 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {isAnalyzing ? <Activity className="w-4 h-4 animate-spin" /> : <BrainCircuit className="w-4 h-4" />}
+            {isAnalyzing ? 'डेटा एनालाइज़ हो रहा है...' : 'ऑपरेटर की चाल चेक करें'}
+          </button>
+
+          {/* AI Suggestion Box */}
+          {aiSuggestion && aiSuggestion.detected && (
+            <div className="mt-4 bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 animate-in zoom-in duration-300">
+              <div className="flex items-start gap-3 mb-4">
+                <AlertTriangle className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-orange-400/90 leading-relaxed font-medium">
+                  {aiSuggestion.message}
+                </p>
+              </div>
+              
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleApproveShuffle}
+                  className="flex-1 bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/40 text-xs font-bold py-2.5 rounded-lg flex items-center justify-center gap-1 transition-colors"
+                >
+                  <Check className="w-4 h-4" /> परमिशन दें (Approve)
+                </button>
+                <button 
+                  onClick={() => setAiSuggestion(null)}
+                  className="flex-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold py-2.5 rounded-lg flex items-center justify-center gap-1 transition-colors"
+                >
+                  <X className="w-4 h-4" /> रिजेक्ट करें
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 👑 केवल मुख्य एडमिन (Super Admin) को दिखेगा - SUB ADMIN CONTROL */}
       {userRole === 'super-admin' && (
         <div className="bg-[#0b171e] p-4 rounded-2xl border border-[#e6007a]/40 shadow-lg mb-6">
           <h3 className="text-sm font-bold text-[#e6007a] tracking-wider mb-3 flex items-center gap-2">
@@ -146,7 +243,7 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
         </div>
       )}
 
-      {/* 👥 यूज़र मैनेजमेंट - यह एडमिन (आपको) और सब-एडमिन (भाई) दोनों को दिखेगा */}
+      {/* 👥 यूज़र मैनेजमेंट - यह एडमिन और सब-एडमिन दोनों को दिखेगा */}
       <div className="bg-[#0b171e] p-4 rounded-2xl border border-[#008080]/40 shadow-lg">
         <h3 className="text-sm font-bold text-[#00e6e6] tracking-wider mb-3 flex items-center gap-2">
           <span>👥</span> ग्राहक आईडी और पासवर्ड जनरेटर

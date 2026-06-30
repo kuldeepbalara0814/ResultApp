@@ -2,7 +2,7 @@ import { PredictionInput, PredictionResult, TokariItem } from '../types';
 
 export interface ExtendedPredictionResult extends PredictionResult {
   alerts?: string[];
-  report?: string; // नया: रिपोर्ट के लिए
+  report?: string; 
 }
 
 const EVERGREEN = ['3', '8', '6', '1', '9', '0', '7', '2'];
@@ -136,6 +136,7 @@ const getFamily = (jodi: string): string[] => {
 
 const getDifference = (num1: string, num2: string) => Math.abs(parseInt(num1) - parseInt(num2));
 
+// 🚨 फिक्स: यहाँ अब पूरे 10 पैरामीटर मैच हो रहे हैं!
 export const calculatePrediction = (
   inputs: PredictionInput,
   selectedFormulas: string[],
@@ -144,14 +145,16 @@ export const calculatePrediction = (
   todaysRes: string[] = [],
   past4DaysMurda: string[] = [],
   past10DaysNums: string[] = [],
-  past15DaysNums: string[] = [] 
+  past15DaysNums: string[] = [],
+  pastMonth1Nums: string[] = [], // नया
+  pastMonth2Nums: string[] = []  // नया
 ): ExtendedPredictionResult => {
   const dateObj = new Date(inputs.date);
   const jsDay = dateObj.getDay();
   const dayOfMonth = dateObj.getDate();
   
   const jodiScores: Record<string, number> = {};
-  const scoreDetailsLog: Record<string, Record<string, number>> = {}; // नया: लॉग बनाने के लिए
+  const scoreDetailsLog: Record<string, Record<string, number>> = {};
   const rawList: string[] = [];
 
   todaysRes.forEach(r => {
@@ -170,7 +173,6 @@ export const calculatePrediction = (
   const rashi = (outerHaruf + 5) % 10;
   const LOGIC_3_JORIS = ['30', '03', '41', '14', '74', '47', '85', '58', '96', '69'];
 
-  // पूरे 100 नंबरों की चेकिंग और लॉगिंग
   for (let i = 1; i <= 100; i++) {
     const jodi = i === 100 ? '00' : i.toString().padStart(2, '0');
     let score = counts[jodi] || 0; 
@@ -235,7 +237,7 @@ export const calculatePrediction = (
       if (!hasAppeared) { score += 2; details['10 दिन गैप'] = 2; }
     }
 
-    // 🔴 मास्टर फॉर्मूले 
+    // 🔴 दाना ट्रैप 
     if (past4DaysMurda && past4DaysMurda.length > 0) {
       let gotHighDana = false;
       let gotLowDana = false;
@@ -248,18 +250,21 @@ export const calculatePrediction = (
       else if (gotLowDana) { score += 5; details['दाना ट्रैप (लो)'] = 5; }
     }
 
+    // 🔴 22 तारीख का नियम
     if (dayOfMonth >= 22 && currentMonthNums && currentMonthNums.length > 0) {
       const fam = getFamily(jodi);
       const appearedInMonth = fam.some(f => currentMonthNums.includes(f));
       if (!appearedInMonth) { score += 3; details['22+ डेट प्रो नियम'] = 3; }
     }
 
+    // 🔴 15 दिन बंद घर
     if (past15DaysNums && past15DaysNums.length > 0) {
       const fam = getFamily(jodi);
       const appearedIn15Days = fam.some(f => past15DaysNums.includes(f));
       if (!appearedIn15Days) { score += 2; details['15 दिन बंद घर'] = 2; }
     }
 
+    // 🔴 3rd Step Gap 
     if (past15DaysNums && past15DaysNums.length > 0) {
       const appearanceIndices: number[] = [];
       for (let k = 0; k < past15DaysNums.length; k++) {
@@ -282,14 +287,26 @@ export const calculatePrediction = (
       }
     }
 
+    // 🔴 क्रॉस-मंथ शिफ्ट ट्रैप (आपका नया नियम जो छूट रहा था)
+    if (pastMonth1Nums.length > 0 || pastMonth2Nums.length > 0) {
+      const fam = getFamily(jodi);
+      let monthShiftMatch = false;
+      if (pastMonth1Nums.some(n => fam.includes(n))) monthShiftMatch = true;
+      if (pastMonth2Nums.some(n => fam.includes(n))) monthShiftMatch = true;
+      
+      if (monthShiftMatch) {
+          score += 5; 
+          details['क्रॉस-मंथ शिफ्ट (Cross-Month)'] = 5;
+      }
+    }
+
     jodiScores[jodi] = score;
-    if (score > 0) scoreDetailsLog[jodi] = details; // लॉग सेव कर लिया
+    if (score > 0) scoreDetailsLog[jodi] = details; 
   }
 
   const sortedJodis = Object.keys(jodiScores).sort((a, b) => jodiScores[b] - jodiScores[a]);
   const final30 = sortedJodis.slice(0, 30);
 
-  // === रिपोर्ट बनाना (हिंदी में) ===
   let reportStr = `📅 साहिल मास्टर - प्रेडिक्शन ऑडिट रिपोर्ट (${inputs.date})\n`;
   reportStr += `-------------------------------------------------\n`;
   reportStr += `इस रिपोर्ट में आप देख सकते हैं कि कंप्यूटर ने किस जोड़ी को कितने पॉइंट और क्यों दिए हैं।\n\n`;

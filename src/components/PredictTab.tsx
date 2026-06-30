@@ -38,8 +38,11 @@ export default function PredictTab() {
   useEffect(() => {
     if (inputMode === 'auto') {
       const allResults = getAllResultsSorted();
-      if (allResults.length > 0) {
-        const latest = allResults[0];
+      // 🚨 फिक्स: छुट्टी (खाली) वाले दिनों को इग्नोर करें, सिर्फ प्ले वाले दिन लें
+      const validResults = allResults.filter(r => r.fd || r.gb || r.gl || r.ds);
+      
+      if (validResults.length > 0) {
+        const latest = validResults[0];
         setInputs(prev => ({
           ...prev, fd: latest.fd, gb: latest.gb, gl: latest.gl, ds: latest.ds
         }));
@@ -68,33 +71,36 @@ export default function PredictTab() {
     setTimeout(() => {
       const pastResults = getAllResultsSorted();
       
+      // 🚨 फिक्स: छुट्टी (खाली) वाले दिनों को पूरी तरह डेटाबेस फिल्टर से बाहर करें
+      const validPastResults = pastResults.filter(r => r.fd || r.gb || r.gl || r.ds);
+      
       const pastMurda: string[] = [];
-      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 3).forEach(r => {
+      validPastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 3).forEach(r => {
         if (r.fd) pastMurda.push(r.fd); if (r.gb) pastMurda.push(r.gb);
         if (r.gl) pastMurda.push(r.gl); if (r.ds) pastMurda.push(r.ds);
       });
 
       const past4DaysMurda: string[] = [];
-      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 4).forEach(r => {
+      validPastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 4).forEach(r => {
         if (r.fd) past4DaysMurda.push(r.fd); if (r.gb) past4DaysMurda.push(r.gb);
         if (r.gl) past4DaysMurda.push(r.gl); if (r.ds) past4DaysMurda.push(r.ds);
       });
 
       const past10DaysNums: string[] = [];
-      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 10).forEach(r => {
+      validPastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 10).forEach(r => {
         if (r.fd) past10DaysNums.push(r.fd); if (r.gb) past10DaysNums.push(r.gb);
         if (r.gl) past10DaysNums.push(r.gl); if (r.ds) past10DaysNums.push(r.ds);
       });
 
       const past15DaysNums: string[] = [];
-      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 15).forEach(r => {
+      validPastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 15).forEach(r => {
         if (r.fd) past15DaysNums.push(r.fd); if (r.gb) past15DaysNums.push(r.gb);
         if (r.gl) past15DaysNums.push(r.gl); if (r.ds) past15DaysNums.push(r.ds);
       });
 
       const currentYm = inputs.date.substring(0, 7);
       const currentMonthNums: string[] = [];
-      pastResults.filter(r => r.date.startsWith(currentYm)).forEach(r => {
+      validPastResults.filter(r => r.date.startsWith(currentYm)).forEach(r => {
         if (r.fd) currentMonthNums.push(r.fd); if (r.gb) currentMonthNums.push(r.gb);
         if (r.gl) currentMonthNums.push(r.gl); if (r.ds) currentMonthNums.push(r.ds);
       });
@@ -105,7 +111,7 @@ export default function PredictTab() {
 
       if (todaysRes.length < 4) {
         const allPastNums: string[] = [];
-        pastResults.forEach(r => {
+        validPastResults.forEach(r => {
           if (r.ds) allPastNums.push(r.ds); if (r.gl) allPastNums.push(r.gl);
           if (r.gb) allPastNums.push(r.gb); if (r.fd) allPastNums.push(r.fd);
         });
@@ -114,27 +120,25 @@ export default function PredictTab() {
         }
       }
 
-      // ===== Cross Month Family Check =====
-      const getTargetDates = (baseDateStr: string, monthsBack: number) => {
+      // ===== Cross Month Family Check (Updated Auto-Calendar Logic) =====
+      const getValidTargetDates = (baseDateStr: string, monthsBack: number) => {
         const [y, m, d] = baseDateStr.split('-').map(Number);
-        const dates: string[] = [];
-        for (let i = 0; i < 3; i++) {
-          const dateObj = new Date(y, m - 1 - monthsBack, d - i);
-          const yyyy = dateObj.getFullYear();
-          const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-          const dd = String(dateObj.getDate()).padStart(2, '0');
-          dates.push(`${yyyy}-${mm}-${dd}`);
-        }
-        return dates;
+        // सिस्टम अपने आप 28, 29, 30 या 31 दिन समझ जाएगा
+        const targetDate = new Date(y, m - 1 - monthsBack, d);
+        
+        return validPastResults
+          .filter(r => new Date(r.date) <= targetDate)
+          .slice(0, 3)
+          .map(r => r.date);
       };
 
-      const m1Dates = getTargetDates(inputs.date, 1);
-      const m2Dates = getTargetDates(inputs.date, 2);
+      const m1Dates = getValidTargetDates(inputs.date, 1);
+      const m2Dates = getValidTargetDates(inputs.date, 2);
 
       const pastMonth1Nums: string[] = [];
       const pastMonth2Nums: string[] = [];
 
-      pastResults.forEach(r => {
+      validPastResults.forEach(r => {
         if (m1Dates.includes(r.date)) {
           if (r.fd) pastMonth1Nums.push(r.fd); if (r.gb) pastMonth1Nums.push(r.gb);
           if (r.gl) pastMonth1Nums.push(r.gl); if (r.ds) pastMonth1Nums.push(r.ds);

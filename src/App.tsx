@@ -13,7 +13,7 @@ import LoginScreen from './components/LoginScreen';
 import KhaiwalTab from './components/KhaiwalTab';
 import MembershipTab from './components/MembershipTab';
 import AdminPanelTab from './components/AdminPanelTab';
-import GeminiAssistantModal from './components/GeminiAssistantModal'; // 🤖 AI बोट इम्पोर्ट किया गया
+import GeminiAssistantModal from './components/GeminiAssistantModal'; // 🤖 AI बोट
 
 import { logoutUser } from './utils/auth';
 import { setupLiveSync } from './utils/storage'; 
@@ -190,7 +190,9 @@ const CalculatorTab = () => {
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState<string>('super-admin'); 
+  
+  // डिफ़ॉल्ट रोल 'guest' सेट किया गया है ताकि कोई नया यूज़र एडमिन न बन पाए
+  const [userRole, setUserRole] = useState<string>('guest'); 
   
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [nextGame, setNextGame] = useState({ name: 'LOAD...', time: '00:00:00' });
@@ -263,7 +265,8 @@ export default function App() {
     const sessionAuth = sessionStorage.getItem('is_auth');
     if (sessionAuth === 'true') setIsAuthenticated(true);
     
-    const sessionRole = sessionStorage.getItem('user_role') || 'super-admin';
+    // सुरक्षित रोल चेकिंग
+    const sessionRole = sessionStorage.getItem('user_role') || 'guest';
     setUserRole(sessionRole);
   }, []);
 
@@ -328,8 +331,8 @@ export default function App() {
             {/* Top Navigation Icons */}
             <div className="flex items-center gap-2">
                 
-                {/* 🛡️ एडमिन पैनल शील्ड (सिर्फ एडमिन के लिए) */}
-                {(userRole === 'super-admin' || userRole === 'sub-admin') && (
+                {/* 🛡️ एडमिन पैनल शील्ड (अब यह 100% सिर्फ 'super-admin' के लिए है) */}
+                {userRole === 'super-admin' && (
                   <button 
                     onClick={() => setActiveTab('admin')} 
                     className={`p-2 rounded-xl transition-all duration-300 border ${activeTab === 'admin' ? 'bg-[#e6007a] border-[#e6007a] text-white shadow-[0_0_15px_rgba(230,0,122,0.5)] scale-105' : 'bg-[#051014] border-[#008080]/40 text-slate-400 hover:text-white hover:border-[#e6007a]/50 hover:bg-[#e6007a]/10'}`} 
@@ -340,17 +343,6 @@ export default function App() {
                     </svg>
                   </button>
                 )}
-
-                {/* 📩 ईमेल सपोर्ट बटन (आपकी ईमेल आईडी सेट कर दी गई है) */}
-                <a 
-                    href="mailto:Kuldeepuberpune@gmail.com?subject=Sahil Master System - User Help Needed" 
-                    className="p-2 rounded-xl transition-all duration-300 border bg-[#051014] border-[#008080]/40 text-slate-400 hover:text-white hover:border-[#00e6e6]/80 hover:bg-[#00e6e6]/20" 
-                    title="ईमेल सपोर्ट"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                </a>
 
                 {/* लेज़र कैलकुलेटर आइकॉन */}
                 <button onClick={() => setActiveTab('strategy')} className={`p-2 rounded-xl transition-all duration-300 border ${activeTab==='strategy' ? 'bg-[#e6007a] border-[#e6007a] text-white shadow-[0_0_15px_rgba(230,0,122,0.5)] scale-105' : 'bg-[#051014] border-[#008080]/40 text-slate-400 hover:text-white hover:border-[#e6007a]/50 hover:bg-[#e6007a]/10'}`} title="Ledger Strategy">
@@ -381,8 +373,8 @@ export default function App() {
             {activeTab === 'diary' && <DiaryTab />}
             {activeTab === 'strategy' && <StrategyCalculator />}
 
-            {/* 🛡️ एडमिन पैनल टैब */}
-            {activeTab === 'admin' && (userRole === 'super-admin' || userRole === 'sub-admin') && (
+            {/* 🛡️ एडमिन पैनल टैब (सिर्फ super-admin के लिए) */}
+            {activeTab === 'admin' && userRole === 'super-admin' && (
               <AdminPanelTab userRole={userRole} setUserRole={setUserRole} />
             )}
           </div>

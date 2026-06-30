@@ -38,7 +38,6 @@ export default function PredictTab() {
   useEffect(() => {
     if (inputMode === 'auto') {
       const allResults = getAllResultsSorted();
-      // 🚨 फिक्स: छुट्टी (खाली) वाले दिनों को इग्नोर करें, सिर्फ प्ले वाले दिन लें
       const validResults = allResults.filter(r => r.fd || r.gb || r.gl || r.ds);
       
       if (validResults.length > 0) {
@@ -70,8 +69,6 @@ export default function PredictTab() {
 
     setTimeout(() => {
       const pastResults = getAllResultsSorted();
-      
-      // 🚨 फिक्स: छुट्टी (खाली) वाले दिनों को पूरी तरह डेटाबेस फिल्टर से बाहर करें
       const validPastResults = pastResults.filter(r => r.fd || r.gb || r.gl || r.ds);
       
       const pastMurda: string[] = [];
@@ -120,10 +117,8 @@ export default function PredictTab() {
         }
       }
 
-      // ===== Cross Month Family Check (Updated Auto-Calendar Logic) =====
       const getValidTargetDates = (baseDateStr: string, monthsBack: number) => {
         const [y, m, d] = baseDateStr.split('-').map(Number);
-        // सिस्टम अपने आप 28, 29, 30 या 31 दिन समझ जाएगा
         const targetDate = new Date(y, m - 1 - monthsBack, d);
         
         return validPastResults
@@ -212,37 +207,37 @@ export default function PredictTab() {
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-6 pb-24">
       <div className="flex items-center justify-between mb-2">
-        <h1 className="text-xl font-bold text-teal-400">आज की प्रेडिक्शन</h1>
+        <h1 className="text-xl font-bold text-[#e6007a]">आज की प्रेडिक्शन</h1>
         
-        <div className="flex bg-[#111827] rounded-xl p-1 border border-slate-800">
+        <div className="flex bg-[#0b171e] rounded-xl p-1 border border-[#008080]/30">
           <button 
             onClick={() => setPlayMode('safe')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1 transition-colors ${playMode === 'safe' ? 'bg-green-500 text-slate-900' : 'text-slate-400 hover:text-white'}`}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1 transition-colors ${playMode === 'safe' ? 'bg-[#008080] text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
           >
             <Shield className="w-3.5 h-3.5" /> Safe Mode
           </button>
           <button 
             onClick={() => setPlayMode('pro')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1 transition-colors ${playMode === 'pro' ? 'bg-teal-400 text-slate-900' : 'text-slate-400 hover:text-white'}`}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1 transition-colors ${playMode === 'pro' ? 'bg-[#e6007a] text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
           >
             <ShieldCheck className="w-3.5 h-3.5" /> Pro Mode
           </button>
         </div>
       </div>
 
-      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-6 shadow-md">
+      <div className="bg-[#0b171e] border border-[#008080]/30 rounded-2xl p-5 space-y-6 shadow-lg shadow-[#008080]/5">
         <div className="flex items-center justify-between">
           <h2 className="text-white font-semibold">नंबर दर्ज करें</h2>
-          <div className="flex bg-[#0B1120] rounded-lg p-1 border border-slate-800">
+          <div className="flex bg-[#051014] rounded-lg p-1 border border-[#008080]/20">
             <button 
               onClick={() => setInputMode('auto')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${inputMode === 'auto' ? 'bg-teal-400 text-slate-900' : 'text-slate-400 hover:text-white'}`}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${inputMode === 'auto' ? 'bg-[#e6007a] text-white' : 'text-slate-400 hover:text-white'}`}
             >
               ऑटो (पिछला)
             </button>
             <button 
               onClick={() => setInputMode('manual')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${inputMode === 'manual' ? 'bg-teal-400 text-slate-900' : 'text-slate-400 hover:text-white'}`}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${inputMode === 'manual' ? 'bg-[#e6007a] text-white' : 'text-slate-400 hover:text-white'}`}
             >
               मैनुअल
             </button>
@@ -256,7 +251,7 @@ export default function PredictTab() {
             name="date"
             value={inputs.date}
             onChange={handleInputChange}
-            className="w-full bg-[#0B1120] border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-teal-400 transition-colors"
+            className="w-full bg-[#051014] border border-[#008080]/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#e6007a] focus:ring-1 focus:ring-[#e6007a] transition-colors"
           />
         </div>
 
@@ -274,8 +269,8 @@ export default function PredictTab() {
                 placeholder="--"
                 className={`w-full border rounded-lg px-2 py-3 text-center text-white focus:outline-none transition-colors font-mono ${
                   inputMode === 'auto' 
-                    ? 'bg-slate-800/50 border-slate-700 text-slate-400' 
-                    : 'bg-[#0B1120] border-slate-800 focus:border-teal-400 focus:ring-1 focus:ring-teal-400'
+                    ? 'bg-[#051014]/50 border-[#008080]/20 text-[#00e6e6]/60' 
+                    : 'bg-[#051014] border-[#008080]/40 focus:border-[#e6007a] focus:ring-1 focus:ring-[#e6007a]'
                 }`}
               />
             </div>
@@ -283,13 +278,13 @@ export default function PredictTab() {
         </div>
         
         {inputMode === 'auto' && (
-          <div className="text-xs text-slate-500 flex items-center justify-center gap-1">
+          <div className="text-xs text-[#00e6e6]/70 flex items-center justify-center gap-1">
             <RefreshCw className="w-3 h-3" /> लेटेस्ट रिजल्ट से डेटा ऑटो-फेच किया गया है।
           </div>
         )}
       </div>
 
-      <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-5 shadow-md">
+      <div className="bg-[#0b171e] border border-[#008080]/30 rounded-2xl p-5 space-y-5 shadow-lg shadow-[#008080]/5">
         <h2 className="text-white font-semibold">फॉर्मूला चुनें</h2>
         
         <div className="grid grid-cols-2 gap-4">
@@ -299,14 +294,14 @@ export default function PredictTab() {
               <button 
                 key={formula.id}
                 onClick={() => toggleFormula(formula.id)}
-                className="flex items-center space-x-3 text-left"
+                className="flex items-center space-x-3 text-left group"
               >
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors ${
-                  isSelected ? 'bg-teal-400 border-teal-400' : 'border-slate-600'
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
+                  isSelected ? 'bg-[#e6007a] border-[#e6007a] shadow-[0_0_8px_rgba(230,0,122,0.5)]' : 'border-[#008080]/50 group-hover:border-[#e6007a]/50'
                 }`}>
-                  {isSelected && <Check className="w-3 h-3 text-slate-900 stroke-[3]" />}
+                  {isSelected && <Check className="w-3 h-3 text-white stroke-[3]" />}
                 </div>
-                <span className="text-sm text-slate-200">{formula.label}</span>
+                <span className="text-sm text-slate-200 group-hover:text-white transition-colors">{formula.label}</span>
               </button>
             )
           })}
@@ -316,7 +311,7 @@ export default function PredictTab() {
       <button 
         onClick={handlePredict}
         disabled={isPredicting || !inputs.fd || !inputs.gb || !inputs.gl || !inputs.ds}
-        className="w-full bg-teal-400 hover:bg-teal-300 text-slate-900 font-bold py-4 rounded-xl flex items-center justify-center space-x-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full bg-gradient-to-r from-[#e6007a] to-[#700080] hover:from-[#ff1a8c] hover:to-[#8b0099] border border-[#e6007a]/50 text-white font-bold py-4 rounded-xl flex items-center justify-center space-x-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_15px_rgba(230,0,122,0.3)]"
       >
         <Zap className={`w-5 h-5 ${isPredicting ? 'animate-pulse' : ''}`} />
         <span>{isPredicting ? 'प्रेडिक्शन हो रही है...' : 'प्रेडिक्शन निकालें'}</span>
@@ -324,26 +319,26 @@ export default function PredictTab() {
 
       {result && (
         <div className="space-y-6 mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <h2 className="text-2xl font-bold text-teal-400 text-center">
+          <h2 className="text-2xl font-bold text-[#e6007a] text-center drop-shadow-[0_0_8px_rgba(230,0,122,0.3)]">
              {playMode === 'safe' ? '🛡️ Safe Mode रिजल्ट' : '🚀 Pro Mode रिजल्ट'}
           </h2>
 
-          <div className="bg-gradient-to-b from-[#374151] to-[#111827] border border-slate-700 rounded-2xl p-5 shadow-xl">
+          <div className="bg-gradient-to-b from-[#0d222b] to-[#051014] border border-[#008080]/40 rounded-2xl p-5 shadow-[0_8px_20px_rgba(0,128,128,0.1)]">
             <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-              <Send className="w-5 h-5 text-teal-400" />
+              <Send className="w-5 h-5 text-[#e6007a]" />
               प्ले ऑप्शन और शेयर
             </h3>
 
             <div className="space-y-4">
-              <div className="flex gap-2 p-1 bg-[#0B1120] rounded-xl overflow-hidden">
+              <div className="flex gap-2 p-1 bg-[#051014] border border-[#008080]/20 rounded-xl overflow-hidden">
                 {(['FD', 'GB', 'GL', 'DS'] as const).map(game => (
                   <button
                     key={game}
                     onClick={() => setSelectedGame(game)}
                     className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${
                       selectedGame === game 
-                        ? 'bg-teal-400 text-slate-900' 
-                        : 'text-slate-400 hover:bg-slate-800'
+                        ? 'bg-[#008080] text-white shadow-md' 
+                        : 'text-slate-400 hover:bg-[#008080]/20 hover:text-white'
                     }`}
                   >
                     {game}
@@ -351,33 +346,33 @@ export default function PredictTab() {
                 ))}
               </div>
 
-              <div className="bg-[#0B1120] rounded-xl p-4 border border-slate-800 text-center font-mono">
+              <div className="bg-[#051014] rounded-xl p-4 border border-[#008080]/30 text-center font-mono">
                 <div className="text-slate-400 text-sm mb-1">{selectedGame} प्ले इन्फो ({playMode === 'safe' ? 'Safe' : 'Pro'})</div>
                 <div className="text-2xl font-bold text-white mb-1">
                   {currentRate} <span className="text-sm font-normal text-slate-500">Into</span>
                 </div>
-                <div className="text-teal-400 font-medium">कुल: ₹{totalAmount} ({displayedJodis.length} जोड़ी)</div>
+                <div className="text-[#e6007a] font-medium">कुल: ₹{totalAmount} ({displayedJodis.length} जोड़ी)</div>
               </div>
 
               <div className="flex flex-col gap-3 pt-2">
                 <button 
                   onClick={copyToClipboard}
-                  className="w-full bg-[#1F2937] hover:bg-[#374151] border border-slate-700 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                  className="w-full bg-[#0b171e] hover:bg-[#0d222b] border border-[#008080]/40 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
                 >
-                  {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
+                  {copied ? <Check className="w-5 h-5 text-[#00e6e6]" /> : <Copy className="w-5 h-5 text-[#00e6e6]" />}
                   {copied ? 'कॉपी हो गया!' : 'खाईवाल के लिए कॉपी करें'}
                 </button>
 
                 <button 
                   onClick={handleLogToTracker}
-                  className="w-full bg-teal-400/10 hover:bg-teal-400/20 text-teal-400 border border-teal-400/30 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                  className="w-full bg-[#e6007a]/10 hover:bg-[#e6007a]/20 text-[#ff4d94] border border-[#e6007a]/30 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
                 >
                   <Target className="w-5 h-5" /> ट्रैकर में प्ले कन्फर्म करें
                 </button>
 
                 <button 
                   onClick={downloadReport}
-                  className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2"
+                  className="w-full bg-[#051014] hover:bg-[#0b171e] border border-[#008080]/20 text-slate-300 font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2"
                 >
                   <FileText className="w-5 h-5 text-slate-400" />
                   विस्तृत कैलकुलेशन रिपोर्ट डाउनलोड (TXT)
@@ -386,14 +381,14 @@ export default function PredictTab() {
             </div>
           </div>
 
-          <div className="border border-green-500/30 rounded-2xl overflow-hidden bg-[#111827]">
-            <div className="bg-green-500/10 px-4 py-3 border-b border-green-500/20 flex justify-between items-center">
-              <h3 className="text-green-500 font-medium">L1 - सुपर VIP ({result.l1.length} जोड़ी)</h3>
-              {playMode === 'safe' && <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded font-bold">Safe Mode Active</span>}
+          <div className="border border-[#008080]/40 rounded-2xl overflow-hidden bg-[#0b171e]">
+            <div className="bg-[#008080]/15 px-4 py-3 border-b border-[#008080]/30 flex justify-between items-center">
+              <h3 className="text-[#00e6e6] font-medium drop-shadow-[0_0_2px_rgba(0,230,230,0.5)]">L1 - सुपर VIP ({result.l1.length} जोड़ी)</h3>
+              {playMode === 'safe' && <span className="text-xs bg-[#008080] text-white px-2 py-0.5 rounded font-bold shadow-sm">Safe Mode Active</span>}
             </div>
             <div className="p-4 flex flex-wrap gap-3">
               {result.l1.map((num, i) => (
-                <div key={i} className="bg-green-500/20 text-green-400 font-mono text-lg px-3 py-2 rounded-lg border border-green-500/30">
+                <div key={i} className="bg-[#008080]/20 text-[#00e6e6] font-mono text-lg px-3 py-2 rounded-lg border border-[#008080]/40 shadow-[0_0_8px_rgba(0,128,128,0.2)]">
                   {num}
                 </div>
               ))}
@@ -401,13 +396,13 @@ export default function PredictTab() {
             </div>
           </div>
 
-          <div className="border border-blue-500/30 rounded-2xl overflow-hidden bg-[#111827]">
-            <div className="bg-blue-500/10 px-4 py-3 border-b border-blue-500/20">
-              <h3 className="text-blue-500 font-medium">L2 - मेन ({result.l2.length} जोड़ी)</h3>
+          <div className="border border-[#700080]/40 rounded-2xl overflow-hidden bg-[#0b171e]">
+            <div className="bg-[#700080]/15 px-4 py-3 border-b border-[#700080]/30">
+              <h3 className="text-[#df80ff] font-medium drop-shadow-[0_0_2px_rgba(223,128,255,0.5)]">L2 - मेन ({result.l2.length} जोड़ी)</h3>
             </div>
             <div className="p-4 flex flex-wrap gap-3">
               {result.l2.map((num, i) => (
-                <div key={i} className="bg-blue-500/20 text-blue-400 font-mono text-lg px-3 py-2 rounded-lg border border-blue-500/30">
+                <div key={i} className="bg-[#700080]/20 text-[#df80ff] font-mono text-lg px-3 py-2 rounded-lg border border-[#700080]/40 shadow-[0_0_8px_rgba(112,0,128,0.2)]">
                   {num}
                 </div>
               ))}
@@ -415,13 +410,13 @@ export default function PredictTab() {
             </div>
           </div>
 
-          <div className="border border-teal-400/30 rounded-2xl overflow-hidden bg-[#111827]">
-            <div className="bg-teal-400/10 px-4 py-3 border-b border-teal-400/20">
-              <h3 className="text-teal-400 font-medium">L3 - सपोर्ट ({result.l3.length} जोड़ी)</h3>
+          <div className="border border-[#e6007a]/40 rounded-2xl overflow-hidden bg-[#0b171e]">
+            <div className="bg-[#e6007a]/15 px-4 py-3 border-b border-[#e6007a]/30">
+              <h3 className="text-[#ff4d94] font-medium drop-shadow-[0_0_2px_rgba(255,77,148,0.5)]">L3 - सपोर्ट ({result.l3.length} जोड़ी)</h3>
             </div>
             <div className="p-4 flex flex-wrap gap-3">
               {result.l3.map((num, i) => (
-                <div key={i} className="bg-teal-400/20 text-teal-300 font-mono text-lg px-3 py-2 rounded-lg border border-teal-400/30">
+                <div key={i} className="bg-[#e6007a]/20 text-[#ff66b3] font-mono text-lg px-3 py-2 rounded-lg border border-[#e6007a]/40 shadow-[0_0_8px_rgba(230,0,122,0.2)]">
                   {num}
                 </div>
               ))}
@@ -430,15 +425,15 @@ export default function PredictTab() {
           </div>
 
           {result.tokari && result.tokari.length > 0 && (
-            <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5">
-              <h3 className="text-white font-semibold mb-4">टोकरी काउंट्स</h3>
+            <div className="bg-[#0b171e] border border-[#008080]/30 rounded-2xl p-5 shadow-lg">
+              <h3 className="text-white font-semibold mb-4 text-[#00e6e6]">टोकरी काउंट्स</h3>
               <div className="grid grid-cols-4 md:grid-cols-5 gap-3">
                 {result.tokari.map((item, i) => (
-                  <div key={i} className="bg-[#374151] rounded-lg p-2 flex flex-col items-center justify-center border border-slate-700/50">
+                  <div key={i} className="bg-[#051014] rounded-lg p-2 flex flex-col items-center justify-center border border-[#008080]/40 shadow-inner">
                     <div className="text-white font-mono font-medium text-sm md:text-base">
                       {item.id}
                     </div>
-                    <div className="text-xs text-slate-400 mt-1">
+                    <div className="text-xs text-[#e6007a] mt-1 font-bold">
                       {item.count}x
                     </div>
                   </div>

@@ -5,6 +5,7 @@ import { db } from '../firebase/config';
 import { getAllResultsSorted } from '../utils/storage'; 
 import { getShuffleSuggestion, saveWeights } from '../utils/formulas';
 import { BrainCircuit, Check, X, AlertTriangle, Activity } from 'lucide-react';
+import UserManagementModal from './UserManagementModal'; // <-- नया: मोडल इम्पोर्ट किया
 
 export default function AdminPanelTab({ userRole, setUserRole }) {
   const [userId, setUserId] = useState('');
@@ -14,6 +15,9 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
   
   const [aiSuggestion, setAiSuggestion] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // <-- नया: यूज़र लिस्ट दिखाने के लिए स्टेट
+  const [showUserList, setShowUserList] = useState(false);
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
@@ -265,8 +269,20 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
               {loading ? 'डेटाबेस में सुरक्षित हो रहा है...' : 'आईडी जनरेट / पासवर्ड अपडेट करें'}
             </button>
           </form>
+
+          {/* नया: ग्राहकों की लिस्ट देखने का बटन */}
+          <button 
+            type="button" 
+            onClick={() => setShowUserList(true)}
+            className="w-full bg-[#051014] text-[#00e6e6] border border-[#008080]/40 text-xs font-bold py-3 rounded-xl hover:bg-[#008080]/20 transition-all mt-4"
+          >
+            👥 सभी ग्राहकों की लिस्ट देखें (Delete / Block)
+          </button>
         </div>
       )}
+
+      {/* नया: मोडल कॉल */}
+      {showUserList && <UserManagementModal isOpen={showUserList} onClose={() => setShowUserList(false)} />}
     </div>
   );
 }

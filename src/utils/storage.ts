@@ -9,13 +9,34 @@ const INITIAL_CAPITAL_KEY = 'sahil_master_initial_capital';
 // ==========================================
 // 1. RESULTS (प्रेडिक्शन/गेम रिजल्ट) - Hybrid Save
 // ==========================================
+export const getAllResults = (): Record<string, GameResult> => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return {};
+    
+    const parsed = JSON.parse(stored);
+    // अगर डेटा Array की तरह सेव है (जैसे पिछली बार हुआ था), तो उसे Object में बदलें
+    if (Array.isArray(parsed)) {
+      const record: Record<string, GameResult> = {};
+      parsed.forEach(item => {
+        if (item && item.date) record[item.date.trim()] = item;
+      });
+      return record;
+    }
+    return parsed;
+  } catch (error) {
+    console.error("Error reading results:", error);
+    return {};
+  }
+};
+
 export const saveResult = async (result: GameResult) => {
-  // 1. तुरंत लोकल सेव (ताकि वेबसाइट तेज़ चले)
+  // Trim date to prevent duplicate date entries with spaces
+  result.date = result.date.trim();
   const existing = getAllResults();
   existing[result.date] = result;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
 
-  // 2. बैकग्राउंड में Firebase पर लाइव सेव
   try {
     await setDoc(doc(db, 'results', result.date), result);
   } catch (error) {
@@ -26,11 +47,11 @@ export const saveResult = async (result: GameResult) => {
 export const saveMultipleResults = async (results: GameResult[]) => {
   const existing = getAllResults();
   results.forEach(r => {
+    r.date = r.date.trim();
     existing[r.date] = r;
   });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
 
-  // Firebase Batch Save
   try {
     for (const r of results) {
       await setDoc(doc(db, 'results', r.date), r);
@@ -42,17 +63,7 @@ export const saveMultipleResults = async (results: GameResult[]) => {
 
 export const getResultByDate = (date: string): GameResult | null => {
   const all = getAllResults();
-  return all[date] || null;
-};
-
-export const getAllResults = (): Record<string, GameResult> => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : {};
-  } catch (error) {
-    console.error("Error reading results:", error);
-    return {};
-  }
+  return all[date.trim()] || null;
 };
 
 export const getAllResultsSorted = (): GameResult[] => {
@@ -69,7 +80,6 @@ export const getAllResultsSorted = (): GameResult[] => {
 export const clearResults = () => {
   localStorage.removeItem(STORAGE_KEY);
 };
-
 
 // ==========================================
 // 2. TRACKER & CAPITAL - Hybrid Save
@@ -98,7 +108,6 @@ export const saveTrackerEntry = async (entry: TrackerEntry) => {
   }
   localStorage.setItem(TRACKER_KEY, JSON.stringify(existing));
 
-  // Firebase पर लाइव सेव
   try {
     await setDoc(doc(db, 'tracker', entry.id), entry);
   } catch (error) {
@@ -125,7 +134,6 @@ export const deleteTrackerEntry = async (id: string) => {
   const updated = existing.filter(entry => entry.id !== id);
   localStorage.setItem(TRACKER_KEY, JSON.stringify(updated));
 
-  // Firebase से लाइव डिलीट
   try {
     await deleteDoc(doc(db, 'tracker', id));
   } catch (error) {
@@ -133,23 +141,21 @@ export const deleteTrackerEntry = async (id: string) => {
   }
 };
 
-
 // ==========================================
-// 3. FIREBASE SYNC (मैनुअल सिंक के लिए पुराना कोड)
+// 3. FIREBASE SYNC (मैनुअल)
 // ==========================================
 export const syncDataFromFirebase = async () => {
   try {
-    // 1. Results Sync
     const resultsSnap = await getDocs(collection(db, 'results'));
     const resultsData: Record<string, GameResult> = {};
     resultsSnap.forEach(doc => {
-      resultsData[doc.id] = doc.data() as GameResult;
+      const data = doc.data() as GameResult;
+      if (data.date) resultsData[data.date.trim()] = data;
     });
     if (Object.keys(resultsData).length > 0) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(resultsData));
     }
 
-    // 2. Tracker Sync
     const trackerSnap = await getDocs(collection(db, 'tracker'));
     const trackerData: TrackerEntry[] = [];
     trackerSnap.forEach(doc => {
@@ -159,15 +165,12 @@ export const syncDataFromFirebase = async () => {
       localStorage.setItem(TRACKER_KEY, JSON.stringify(trackerData));
     }
 
-    // 3. Capital Sync
     const capitalSnap = await getDocs(collection(db, 'settings'));
     capitalSnap.forEach(doc => {
       if (doc.id === 'capital') {
         localStorage.setItem(INITIAL_CAPITAL_KEY, doc.data().amount.toString());
       }
     });
-
-    console.log("Firebase Data Synced Successfully!");
     return true;
   } catch (error) {
     console.error("Error syncing from Firebase:", error);
@@ -176,36 +179,31 @@ export const syncDataFromFirebase = async () => {
 };
 
 // ==========================================
-// 3.5. REAL-TIME LIVE SYNC (ऑटोमैटिक अपडेट के लिए नया कोड)
+// 3.5. REAL-TIME LIVE SYNC (ऑटोमैटिक)
 // ==========================================
 export const setupLiveSync = (onDataChange?: () => void) => {
   try {
-    // 1. Live Results Listener (बिना रिफ्रेश के रिजल्ट अपडेट करेगा)
     onSnapshot(collection(db, 'results'), (snapshot) => {
       const resultsData: Record<string, GameResult> = {};
       snapshot.forEach(docSnap => {
-        resultsData[docSnap.id] = docSnap.data() as GameResult;
+        const data = docSnap.data() as GameResult;
+        if (data.date) resultsData[data.date.trim()] = data;
       });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(resultsData));
-      
-      // UI को तुरंत जगाने (re-render) के लिए एक इवेंट छोड़ना
       window.dispatchEvent(new Event('firebase-data-updated'));
       if (onDataChange) onDataChange();
     });
 
-    // 2. Live Tracker Listener
     onSnapshot(collection(db, 'tracker'), (snapshot) => {
       const trackerData: TrackerEntry[] = [];
       snapshot.forEach(docSnap => {
         trackerData.push(docSnap.data() as TrackerEntry);
       });
       localStorage.setItem(TRACKER_KEY, JSON.stringify(trackerData));
-      
       window.dispatchEvent(new Event('firebase-data-updated'));
       if (onDataChange) onDataChange();
     });
 
-    // 3. Live Capital Listener
     onSnapshot(doc(db, 'settings', 'capital'), (docSnap) => {
       if (docSnap.exists()) {
         localStorage.setItem(INITIAL_CAPITAL_KEY, docSnap.data().amount.toString());
@@ -213,13 +211,10 @@ export const setupLiveSync = (onDataChange?: () => void) => {
         if (onDataChange) onDataChange();
       }
     });
-
-    console.log("🔥 Firebase Live Sync Started Successfully!");
   } catch (error) {
     console.error("Live Sync Setup Error:", error);
   }
 };
-
 
 // ==========================================
 // 4. BACKUP FEATURE (JSON Download)
@@ -230,37 +225,38 @@ export const downloadBackupData = () => {
     const tracker = getTrackerEntries();
     const initialCapital = getInitialCapital();
 
-    if (Object.keys(results).length === 0 && tracker.length === 0) {
-      alert("बैकअप के लिए अभी कोई डेटा मौजूद नहीं है!");
-      return false;
-    }
-
-    const backupData = {
-      results,
-      tracker,
-      initialCapital,
-      backupDate: new Date().toISOString()
-    };
-
-    const jsonData = JSON.stringify(backupData, null, 2);
-    const blob = new Blob([jsonData], { type: 'application/json' });
+    const backupData = { results, tracker, initialCapital, backupDate: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    
-    const today = new Date().toISOString().split('T')[0];
-    link.download = `Sahil_Master_Backup_${today}.json`;
-    
+    link.download = `Sahil_Master_Backup_${new Date().toISOString().split('T')[0]}.json`;
     link.href = url;
-    document.body.appendChild(link);
     link.click();
-    
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
     return true;
   } catch (error) {
-    console.error("Backup failed:", error);
-    alert("बैकअप डाउनलोड करने में कोई तकनीकी खराबी आ गई है।");
     return false;
   }
+};
+
+// ==========================================
+// 5. DELETE BY DATE RANGE (नया फीचर)
+// ==========================================
+export const deleteResultsByDateRange = async (startDate: string, endDate: string) => {
+  const existing = getAllResults();
+  const datesToDelete: string[] = [];
+
+  Object.keys(existing).forEach(date => {
+    if (date >= startDate && date <= endDate) {
+      datesToDelete.push(date);
+      delete existing[date];
+    }
+  });
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+  try {
+    for (const date of datesToDelete) {
+      await deleteDoc(doc(db, 'results', date.trim()));
+    }
+  } catch (error) { console.error(error); }
+  return datesToDelete.length;
 };

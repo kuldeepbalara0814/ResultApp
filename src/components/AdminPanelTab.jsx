@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-// 🛡️ फ़ायरबेस के ज़रूरी फंक्शन्स
 import { doc, setDoc } from 'firebase/firestore'; 
 import { db } from '../firebase/config'; 
 
-// 🧠 AI शफल इंजन के लिए नए इम्पोर्ट्स
 import { getAllResultsSorted } from '../utils/storage'; 
 import { getShuffleSuggestion, saveWeights } from '../utils/formulas';
 import { BrainCircuit, Check, X, AlertTriangle, Activity } from 'lucide-react';
@@ -14,11 +12,9 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
   const [subAdminEmail, setSubAdminEmail] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // 🧠 AI शफल के लिए स्टेट
   const [aiSuggestion, setAiSuggestion] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // 👥 ग्राहकों की आईडी बनाने या पासवर्ड बदलने का असली फंक्शन
   const handleCreateUser = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -42,7 +38,6 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
     }
   };
 
-  // 👑 केवल आपके (Super Admin) लिए सब-एडमिन बनाने का असली फंक्शन
   const handleCreateSubAdmin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -64,7 +59,6 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
     }
   };
 
-  // 🛑 सब-एडमिन की पावर हटाने का फंक्शन
   const handleRemoveSubAdmin = async () => {
     if (!subAdminEmail) {
       alert("कृपया पहले उस सब-एडमिन की आईडी ऊपर बॉक्स में लिखें जिसे हटाना है।");
@@ -89,7 +83,6 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
     }
   };
 
-  // 🧠 AI शफल इंजन को एनालाइज़ करने का फंक्शन
   const handleAnalyzeOperator = () => {
     setIsAnalyzing(true);
     setAiSuggestion(null);
@@ -119,10 +112,9 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
       } finally {
         setIsAnalyzing(false);
       }
-    }, 1500); // 1.5s का फील देने के लिए डिले
+    }, 1500); 
   };
 
-  // 🧠 AI सुझाव को मंज़ूरी (Approve) देने का फंक्शन
   const handleApproveShuffle = () => {
     if (aiSuggestion && aiSuggestion.proposedWeights) {
       saveWeights(aiSuggestion.proposedWeights);
@@ -134,7 +126,6 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
   return (
     <div className="p-4 mb-24 animate-in fade-in slide-in-from-bottom-8 duration-500 text-slate-200">
       
-      {/* 🔄 टेस्टिंग बटन */}
       <div className="flex justify-end mb-4">
         <button 
           onClick={() => setUserRole(userRole === 'super-admin' ? 'sub-admin' : 'super-admin')}
@@ -156,7 +147,6 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
         )}
       </div>
 
-      {/* 🧠 केवल मुख्य एडमिन (Super Admin - आपको) को दिखेगा - AI SHUFFLE ENGINE */}
       {userRole === 'super-admin' && (
         <div className="bg-gradient-to-br from-[#0b171e] to-[#1a0b1e] p-5 rounded-2xl border border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.15)] mb-6">
           <h3 className="text-sm font-bold text-purple-400 tracking-wider mb-2 flex items-center gap-2">
@@ -175,7 +165,6 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
             {isAnalyzing ? 'डेटा एनालाइज़ हो रहा है...' : 'ऑपरेटर की चाल चेक करें'}
           </button>
 
-          {/* AI Suggestion Box */}
           {aiSuggestion && aiSuggestion.detected && (
             <div className="mt-4 bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 animate-in zoom-in duration-300">
               <div className="flex items-start gap-3 mb-4">
@@ -204,7 +193,6 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
         </div>
       )}
 
-      {/* 👑 केवल मुख्य एडमिन (Super Admin) को दिखेगा - SUB ADMIN CONTROL */}
       {userRole === 'super-admin' && (
         <div className="bg-[#0b171e] p-4 rounded-2xl border border-[#e6007a]/40 shadow-lg mb-6">
           <h3 className="text-sm font-bold text-[#e6007a] tracking-wider mb-3 flex items-center gap-2">
@@ -243,41 +231,42 @@ export default function AdminPanelTab({ userRole, setUserRole }) {
         </div>
       )}
 
-      {/* 👥 यूज़र मैनेजमेंट - यह एडमिन और सब-एडमिन दोनों को दिखेगा */}
-      <div className="bg-[#0b171e] p-4 rounded-2xl border border-[#008080]/40 shadow-lg">
-        <h3 className="text-sm font-bold text-[#00e6e6] tracking-wider mb-3 flex items-center gap-2">
-          <span>👥</span> ग्राहक आईडी और पासवर्ड जनरेटर
-        </h3>
-        <p className="text-xs text-slate-400 mb-4">यहाँ से नए ग्राहकों को लाइव आईडी दी जा सकती है या उनका पासवर्ड बदला जा सकता है।</p>
+      {(userRole === 'super-admin' || userRole === 'sub-admin') && (
+        <div className="bg-[#0b171e] p-4 rounded-2xl border border-[#008080]/40 shadow-lg">
+          <h3 className="text-sm font-bold text-[#00e6e6] tracking-wider mb-3 flex items-center gap-2">
+            <span>👥</span> ग्राहक आईडी और पासवर्ड जनरेटर
+          </h3>
+          <p className="text-xs text-slate-400 mb-4">यहाँ से नए ग्राहकों को लाइव आईडी दी जा सकती है या उनका पासवर्ड बदला जा सकता है।</p>
 
-        <form onSubmit={handleCreateUser} className="space-y-3">
-          <input 
-            type="text" 
-            placeholder="नई यूज़र आईडी (User ID)" 
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            className="w-full bg-[#051014] text-[#00e6e6] p-3 text-sm rounded-xl border border-[#008080]/30 focus:outline-none focus:border-[#00e6e6]"
-            required
-            disabled={loading}
-          />
-          <input 
-            type="text" 
-            placeholder="नया पासवर्ड (Password)" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-[#051014] text-[#00e6e6] p-3 text-sm rounded-xl border border-[#008080]/30 focus:outline-none focus:border-[#00e6e6]"
-            required
-            disabled={loading}
-          />
-          <button 
-            type="submit" 
-            className="w-full bg-[#008080] text-white text-xs font-bold py-3 rounded-xl hover:bg-[#00e6e6] transition-all active:scale-95 shadow-[0_0_10px_rgba(0,128,128,0.3)] disabled:opacity-50"
-            disabled={loading}
-          >
-            {loading ? 'डेटाबेस में सुरक्षित हो रहा है...' : 'आईडी जनरेट / पासवर्ड अपडेट करें'}
-          </button>
-        </form>
-      </div>
+          <form onSubmit={handleCreateUser} className="space-y-3">
+            <input 
+              type="text" 
+              placeholder="नई यूज़र आईडी (User ID)" 
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              className="w-full bg-[#051014] text-[#00e6e6] p-3 text-sm rounded-xl border border-[#008080]/30 focus:outline-none focus:border-[#00e6e6]"
+              required
+              disabled={loading}
+            />
+            <input 
+              type="text" 
+              placeholder="नया पासवर्ड (Password)" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-[#051014] text-[#00e6e6] p-3 text-sm rounded-xl border border-[#008080]/30 focus:outline-none focus:border-[#00e6e6]"
+              required
+              disabled={loading}
+            />
+            <button 
+              type="submit" 
+              className="w-full bg-[#008080] text-white text-xs font-bold py-3 rounded-xl hover:bg-[#00e6e6] transition-all active:scale-95 shadow-[0_0_10px_rgba(0,128,128,0.3)] disabled:opacity-50"
+              disabled={loading}
+            >
+              {loading ? 'डेटाबेस में सुरक्षित हो रहा है...' : 'आईडी जनरेट / पासवर्ड अपडेट करें'}
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

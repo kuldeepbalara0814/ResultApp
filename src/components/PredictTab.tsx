@@ -33,7 +33,7 @@ export default function PredictTab() {
   const [copied, setCopied] = useState(false);
   const [logged, setLogged] = useState(false);
 
-  // --- UI LOCK SYSTEM STATE (जीतने के बाद No Play) ---
+  // --- UI LOCK SYSTEM (कुलदीप भाई के आदेशानुसार परमानेंट डिसेबल किया गया) ---
   const [lockStatus, setLockStatus] = useState<{ isLocked: boolean; wonGame: string; message: string; lockedGames: string[] }>({
     isLocked: false, wonGame: '', message: '', lockedGames: []
   });
@@ -56,66 +56,14 @@ export default function PredictTab() {
     }
   }, [inputMode]);
 
-  // --- UI LOCK SYSTEM LOGIC (With Admin Override) ---
+  // --- LOCK CHECK BYPASSED ---
   useEffect(() => {
-    try {
-      // 1. सबसे पहले चेक करें कि क्या एडमिन ने आज के लिए इस डिवाइस को अनलॉक किया है?
-      const isAdminUnlocked = localStorage.getItem(`admin_unlocked_${inputs.date}`) === "true";
-      if (isAdminUnlocked) {
-         setLockStatus({ isLocked: false, wonGame: '', message: '', lockedGames: [] });
-         return; // अगर एडमिन ने अनलॉक कर दिया है, तो आगे लॉक चेक मत करो
-      }
-
-      // 2. नॉर्मल लॉक लॉजिक
-      const savedDate = localStorage.getItem("lastPredictionDate");
-      const savedPred = localStorage.getItem("lastPrediction");
-      
-      if (savedDate === inputs.date && savedPred) {
-        const jodis = JSON.parse(savedPred);
-        if (Array.isArray(jodis)) {
-          let won = '';
-          
-          if (inputs.fd && jodis.includes(inputs.fd)) won = 'FD';
-          else if (inputs.gb && jodis.includes(inputs.gb)) won = 'GB';
-          else if (inputs.gl && jodis.includes(inputs.gl)) won = 'GL';
-          else if (inputs.ds && jodis.includes(inputs.ds)) won = 'DS';
-
-          if (won) {
-             let locked: string[] = [];
-             if (won === 'FD') locked = ['GB', 'GL', 'DS'];
-             else if (won === 'GB') locked = ['GL', 'DS'];
-             else if (won === 'GL') locked = ['DS'];
-             
-             setLockStatus({
-               isLocked: true,
-               wonGame: won,
-               message: `बधाई हो! आपका ${won} में गेम पास हो गया है। "जीतने के बाद No Play" नियम के अनुसार, आज का आपका कोटा पूरा हुआ। चैन की नींद सोइए!`,
-               lockedGames: locked
-             });
-          } else {
-             setLockStatus({ isLocked: false, wonGame: '', message: '', lockedGames: [] });
-          }
-        }
-      } else {
-          setLockStatus({ isLocked: false, wonGame: '', message: '', lockedGames: [] });
-      }
-    } catch(e) {
-      console.error("Lock system check error:", e);
-    }
+    // यहाँ पहले ऐप लॉक होने का कोड था, जिसे अब पूरी तरह बंद कर दिया गया है।
+    setLockStatus({ isLocked: false, wonGame: '', message: '', lockedGames: [] });
   }, [inputs]);
 
-  // --- ADMIN UNLOCK HANDLER ---
   const handleAdminUnlock = () => {
-    const pin = window.prompt("🛡️ एडमिन पावर: जेनुइन यूज़र के लिए सिस्टम अनलॉक करने हेतु मास्टर पिन (PIN) दर्ज करें:");
-    
-    // यहाँ आप अपना कोई भी सीक्रेट पासवर्ड रख सकते हैं
-    if (pin === "Avtar@123" || pin === "Admin@123") {
-       localStorage.setItem(`admin_unlocked_${inputs.date}`, "true");
-       setLockStatus({ isLocked: false, wonGame: '', message: '', lockedGames: [] });
-       alert("✅ सिस्टम सफलता से अनलॉक कर दिया गया है। यूज़र अब आगे के गेम प्ले कर सकता है।");
-    } else if (pin !== null) {
-       alert("❌ गलत पिन! एक्सेस डिनाइड।");
-    }
+    alert("✅ सिस्टम पहले से ही अनलॉक है। आप आगे के गेम खेल सकते हैं।");
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -398,52 +346,27 @@ export default function PredictTab() {
               <Send className="w-5 h-5 text-[#e6007a]" />
               प्ले ऑप्शन और शेयर
             </h3>
-            
-            {/* नया: जीतने के बाद UI Lock मैसेज + Admin Override Button */}
-            {lockStatus.isLocked && lockStatus.lockedGames.length > 0 && (
-              <div className="bg-[#e6007a]/10 border border-[#e6007a]/50 rounded-xl p-4 mb-4 relative shadow-[0_0_15px_rgba(230,0,122,0.15)]">
-                <div className="flex items-start gap-3">
-                  <Lock className="w-6 h-6 text-[#e6007a] mt-0.5 flex-shrink-0" />
-                  <div className="pr-8">
-                    <h4 className="text-[#e6007a] font-bold mb-1">सिस्टम लॉक एक्टिवेटेड 🔒</h4>
-                    <p className="text-slate-300 text-sm leading-relaxed">{lockStatus.message}</p>
-                  </div>
-                </div>
-                {/* Admin Unlock Key Button */}
-                <button 
-                  onClick={handleAdminUnlock}
-                  title="Admin Override"
-                  className="absolute top-3 right-3 p-2 bg-[#e6007a]/20 hover:bg-[#e6007a]/40 rounded-lg transition-colors group"
-                >
-                  <Key className="w-4 h-4 text-[#e6007a] group-hover:text-white" />
-                </button>
-              </div>
-            )}
 
             <div className="space-y-4">
               <div className="flex gap-2 p-1 bg-[#051014] border border-[#008080]/20 rounded-xl overflow-hidden">
                 {(['FD', 'GB', 'GL', 'DS'] as const).map(game => {
-                  const isGameLocked = lockStatus.lockedGames.includes(game);
                   return (
                     <button
                       key={game}
-                      onClick={() => !isGameLocked && setSelectedGame(game)}
-                      disabled={isGameLocked}
+                      onClick={() => setSelectedGame(game)}
                       className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${
-                        isGameLocked 
-                          ? 'bg-[#0a0a0a] text-slate-600 cursor-not-allowed border border-slate-800' 
-                          : selectedGame === game 
-                            ? 'bg-[#008080] text-white shadow-md' 
-                            : 'text-slate-400 hover:bg-[#008080]/20 hover:text-white'
+                        selectedGame === game 
+                          ? 'bg-[#008080] text-white shadow-md' 
+                          : 'text-slate-400 hover:bg-[#008080]/20 hover:text-white'
                       }`}
                     >
-                      {game} {isGameLocked ? '🔒' : ''}
+                      {game}
                     </button>
                   );
                 })}
               </div>
 
-              <div className={`bg-[#051014] rounded-xl p-4 border border-[#008080]/30 text-center font-mono ${isCurrentGameLocked ? 'opacity-50' : ''}`}>
+              <div className={`bg-[#051014] rounded-xl p-4 border border-[#008080]/30 text-center font-mono`}>
                 <div className="text-slate-400 text-sm mb-1">{selectedGame} प्ले इन्फो ({playMode === 'safe' ? 'Safe' : 'Pro'})</div>
                 <div className="text-2xl font-bold text-white mb-1">
                   {currentRate} <span className="text-sm font-normal text-slate-500">Into</span>
@@ -454,8 +377,7 @@ export default function PredictTab() {
               <div className="flex flex-col gap-3 pt-2">
                 <button 
                   onClick={copyToClipboard}
-                  disabled={isCurrentGameLocked}
-                  className={`w-full bg-[#0b171e] ${isCurrentGameLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#0d222b]'} border border-[#008080]/40 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors`}
+                  className={`w-full bg-[#0b171e] hover:bg-[#0d222b] border border-[#008080]/40 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors`}
                 >
                   {copied ? <Check className="w-5 h-5 text-[#00e6e6]" /> : <Copy className="w-5 h-5 text-[#00e6e6]" />}
                   {copied ? 'कॉपी हो गया!' : 'खाईवाल के लिए कॉपी करें'}
@@ -463,8 +385,7 @@ export default function PredictTab() {
 
                 <button 
                   onClick={handleLogToTracker}
-                  disabled={isCurrentGameLocked}
-                  className={`w-full bg-[#e6007a]/10 ${isCurrentGameLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#e6007a]/20'} text-[#ff4d94] border border-[#e6007a]/30 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors`}
+                  className={`w-full bg-[#e6007a]/10 hover:bg-[#e6007a]/20 text-[#ff4d94] border border-[#e6007a]/30 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors`}
                 >
                   <Target className="w-5 h-5" /> ट्रैकर में प्ले कन्फर्म करें
                 </button>

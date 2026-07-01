@@ -15,7 +15,6 @@ import MembershipTab from './components/MembershipTab';
 import AdminPanelTab from './components/AdminPanelTab';
 import GeminiAssistantModal from './components/GeminiAssistantModal'; // 🤖 AI बॉट
 
-// 🟢 FIX: यहाँ getCurrentRole को जोड़ा गया है ताकि रोल सही से पढ़ा जा सके
 import { logoutUser, getCurrentRole } from './utils/auth';
 import { setupLiveSync } from './utils/storage'; 
 import StrategyCalculator from './components/StrategyCalculator';
@@ -197,16 +196,13 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [nextGame, setNextGame] = useState({ name: 'LOAD...', time: '00:00:00' });
   
-  // 🤖 AI Bot State
   const [isBotOpen, setIsBotOpen] = useState(false);
-  // 🌐 Offline tracker
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   useEffect(() => {
     setupLiveSync();
   }, []);
 
-  // Offline detection logic
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -265,14 +261,12 @@ export default function App() {
     const sessionAuth = sessionStorage.getItem('is_auth');
     if (sessionAuth === 'true') setIsAuthenticated(true);
     
-    // 🟢 FIX: यहाँ getCurrentRole() से सही रोल निकाला जा रहा है
     const sessionRole = getCurrentRole();
     setUserRole(sessionRole);
   }, []);
 
   const handleLogin = () => {
       setIsAuthenticated(true);
-      // लॉगिन होते ही रोल दोबारा अपडेट करें
       setUserRole(getCurrentRole());
   };
 
@@ -315,16 +309,13 @@ export default function App() {
 
       <div className="w-full max-w-md relative min-h-screen bg-[#051014]/95 backdrop-blur-sm shadow-2xl flex flex-col border-x border-[#008080]/30">
         
-        {/* 🌐 Offline Warning Banner */}
         {isOffline && (
             <div className="bg-red-500 text-white text-xs font-bold text-center py-1.5 animate-pulse">
                 ⚠️ इंटरनेट कनेक्शन टूट गया है। कृपया नेटवर्क चेक करें।
             </div>
         )}
 
-        {/* === TOP HEADER PANEL === */}
         <div className="bg-[#0b171e] px-4 py-3 flex justify-between items-center sticky top-0 z-40 shadow-[0_4px_15px_rgba(0,128,128,0.1)] border-b border-[#008080]/30">
-            {/* Live Watch */}
             <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 bg-[#e6007a] rounded-full animate-pulse shadow-[0_0_8px_rgba(230,0,122,0.8)]"></div>
                 <div className="flex flex-col">
@@ -333,10 +324,8 @@ export default function App() {
                 </div>
             </div>
 
-            {/* Top Navigation Icons */}
             <div className="flex items-center gap-2">
                 
-                {/* 🟢 FIX: 🛡️ एडमिन पैनल शील्ड (Super Admin और Sub Admin दोनों के लिए) */}
                 {(userRole === 'super-admin' || userRole === 'sub-admin') && (
                   <button 
                     onClick={() => {
@@ -356,7 +345,6 @@ export default function App() {
                   </button>
                 )}
 
-                {/* लेजर कैलकुलेटर आइकॉन */}
                 <button onClick={() => setActiveTab('strategy')} className={`p-2 rounded-xl transition-all duration-300 border ${activeTab==='strategy' ? 'bg-[#e6007a] border-[#e6007a] text-white shadow-[0_0_15px_rgba(230,0,122,0.5)] scale-105' : 'bg-[#051014] border-[#008080]/40 text-slate-400 hover:text-white hover:border-[#e6007a]/50 hover:bg-[#e6007a]/10'}`} title="Ledger Strategy">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                 </button>
@@ -371,7 +359,6 @@ export default function App() {
 
         <TargetTracker />
         
-        {/* Main Content Area */}
         <div className="overflow-y-auto flex-1 w-full pb-20 p-2 sm:p-4">
           <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} onLogout={handleLogout} />}
@@ -385,17 +372,14 @@ export default function App() {
             {activeTab === 'diary' && <DiaryTab />}
             {activeTab === 'strategy' && <StrategyCalculator />}
 
-            {/* 🟢 FIX: 🛡️ एडमिन पैनल टैब (Super Admin और Sub Admin दोनों के लिए) */}
             {activeTab === 'admin' && (userRole === 'super-admin' || userRole === 'sub-admin') && (
               <AdminPanelTab userRole={userRole} setUserRole={setUserRole} />
             )}
           </div>
         </div>
         
-        {/* Niche ka Navigation Bar */}
         <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
         
-        {/* 💬 Floating AI Bot Button (यहाँ बॉट का आइकॉन और पॉपअप है) */}
         <button
             onClick={() => setIsBotOpen(true)}
             className="fixed bottom-24 right-4 z-40 bg-gradient-to-r from-[#00e6e6] to-[#008080] text-[#051014] p-3.5 rounded-full shadow-[0_0_20px_rgba(0,230,230,0.4)] hover:scale-110 transition-transform flex items-center justify-center border border-[#00e6e6]/50"
@@ -406,7 +390,6 @@ export default function App() {
             </svg>
         </button>
 
-        {/* 🤖 Modal Window for Gemini Bot */}
         {isBotOpen && <GeminiAssistantModal onClose={() => setIsBotOpen(false)} />}
 
       </div>

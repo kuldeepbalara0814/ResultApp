@@ -15,7 +15,8 @@ import MembershipTab from './components/MembershipTab';
 import AdminPanelTab from './components/AdminPanelTab';
 import GeminiAssistantModal from './components/GeminiAssistantModal'; // 🤖 AI बॉट
 
-import { logoutUser } from './utils/auth';
+// 🟢 FIX: यहाँ getCurrentRole को जोड़ा गया है ताकि रोल सही से पढ़ा जा सके
+import { logoutUser, getCurrentRole } from './utils/auth';
 import { setupLiveSync } from './utils/storage'; 
 import StrategyCalculator from './components/StrategyCalculator';
 
@@ -191,7 +192,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
-  // वापस 'super-admin' सेट किया गया ताकि आपको (फाउंडर को) शील्ड दिख सके।
   const [userRole, setUserRole] = useState<string>('super-admin'); 
   
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -265,13 +265,17 @@ export default function App() {
     const sessionAuth = sessionStorage.getItem('is_auth');
     if (sessionAuth === 'true') setIsAuthenticated(true);
     
-    // सुरक्षित रोल चेकिंग - अगर सेट नहीं है, तो 'super-admin' रहेगा ताकि आपको दिखे।
-    // (गेस्ट लॉगिन करते वक्त LoginScreen.tsx में रोल 'guest' सेट होना ज़रूरी है)
-    const sessionRole = sessionStorage.getItem('user_role') || 'super-admin';
+    // 🟢 FIX: यहाँ getCurrentRole() से सही रोल निकाला जा रहा है
+    const sessionRole = getCurrentRole();
     setUserRole(sessionRole);
   }, []);
 
-  const handleLogin = () => setIsAuthenticated(true);
+  const handleLogin = () => {
+      setIsAuthenticated(true);
+      // लॉगिन होते ही रोल दोबारा अपडेट करें
+      setUserRole(getCurrentRole());
+  };
+
   const handleLogout = () => {
     logoutUser();
     setIsAuthenticated(false);
@@ -332,8 +336,8 @@ export default function App() {
             {/* Top Navigation Icons */}
             <div className="flex items-center gap-2">
                 
-                {/* 🛡️ एडमिन पैनल शील्ड (सिर्फ और सिर्फ 'super-admin' के लिए) */}
-                {userRole === 'super-admin' && (
+                {/* 🟢 FIX: 🛡️ एडमिन पैनल शील्ड (Super Admin और Sub Admin दोनों के लिए) */}
+                {(userRole === 'super-admin' || userRole === 'sub-admin') && (
                   <button 
                     onClick={() => {
                     const pin = window.prompt('🛡️ Admin PIN दर्ज करें');
@@ -381,8 +385,8 @@ export default function App() {
             {activeTab === 'diary' && <DiaryTab />}
             {activeTab === 'strategy' && <StrategyCalculator />}
 
-            {/* 🛡️ एडमिन पैनल टैब (सिर्फ super-admin के लिए) */}
-            {activeTab === 'admin' && userRole === 'super-admin' && (
+            {/* 🟢 FIX: 🛡️ एडमिन पैनल टैब (Super Admin और Sub Admin दोनों के लिए) */}
+            {activeTab === 'admin' && (userRole === 'super-admin' || userRole === 'sub-admin') && (
               <AdminPanelTab userRole={userRole} setUserRole={setUserRole} />
             )}
           </div>

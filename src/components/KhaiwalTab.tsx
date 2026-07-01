@@ -1,65 +1,63 @@
 import React, { useState, useEffect } from 'react';
-import { calculateLedger } from '../utils/ledger'; // <-- लेजर से ऑटोमेटिक रेट उठाने के लिए
+import { calculateLedger } from '../utils/ledger'; 
 
 const KhaiwalTab = () => {
   const [jodiText, setJodiText] = useState("");
   const [selectedGame, setSelectedGame] = useState("FD");
   
-  // खाईवाल का नंबर और एडिट स्टेट
   const [khaiwalNumber, setKhaiwalNumber] = useState("");
   const [isEditingNumber, setIsEditingNumber] = useState(false);
 
-  // प्रति जोड़ी कितने रुपये (डिफ़ॉल्ट 10 रुपये)
   const [amountPerJodi, setAmountPerJodi] = useState<number>(10);
 
-  // एक्सेल रिपोर्ट के लिए तारीख (Dates)
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  // पेज लोड होने पर सेव किया हुआ नंबर निकालना
+  // पेज लोड होने पर नंबर मजबूत तरीके से निकालना
   useEffect(() => {
     const savedNumber = localStorage.getItem("khaiwalNumber");
-    if (savedNumber) {
+    if (savedNumber && savedNumber.length >= 10) {
       setKhaiwalNumber(savedNumber);
+      setIsEditingNumber(false);
     } else {
-      setIsEditingNumber(true); // अगर नंबर नहीं है तो एडिट मोड खोलें
+      setIsEditingNumber(true); 
     }
   }, []);
 
-  // --- नया कोड: लेजर (Ledger) से ऑटो-रेट सेट करना ---
+  // लेजर से ऑटो-रेट सेट करना
   useEffect(() => {
-    let rates = { FD: 10, GB: 15, GL: 20, DS: 25 }; // बेस रेट्स
+    let rates = { FD: 10, GB: 15, GL: 20, DS: 25 }; 
     
     try {
       const ledgerData = calculateLedger();
       if (ledgerData && ledgerData.currentRates) {
-        rates = ledgerData.currentRates; // अगर पैसा बढ़ा है, तो लेजर वाले नए रेट्स ले लेगा
+        rates = ledgerData.currentRates; 
       }
     } catch (error) {
       console.log("Ledger error:", error);
     }
 
-    // गेम बदलते ही ऑटोमेटिक सही अमाउंट सेट करना
     if (selectedGame === 'FD') setAmountPerJodi(rates.FD);
     else if (selectedGame === 'GB') setAmountPerJodi(rates.GB);
     else if (selectedGame === 'GL') setAmountPerJodi(rates.GL);
     else if (selectedGame === 'DS') setAmountPerJodi(rates.DS);
     
-  }, [selectedGame]); // जब भी selectedGame बदलेगा, यह रन होगा
-  // ------------------------------------------------
+  }, [selectedGame]);
 
-  // नंबर सेव करने का फंक्शन
+  // नंबर सेव करने का 100% पक्का फंक्शन
   const handleSaveNumber = () => {
-    if (khaiwalNumber.length < 10) {
-      alert("कृपया सही मोबाइल नंबर दर्ज करें!");
+    const cleanNumber = khaiwalNumber.replace(/\D/g, ''); // सिर्फ नंबर रखें
+    if (cleanNumber.length < 10) {
+      alert("कृपया सही 10 अंकों का मोबाइल नंबर दर्ज करें!");
       return;
     }
-    localStorage.setItem("khaiwalNumber", khaiwalNumber);
+    localStorage.setItem("khaiwalNumber", cleanNumber);
+    setKhaiwalNumber(cleanNumber);
     setIsEditingNumber(false);
-    alert("खाईवाल का नंबर सुरक्षित (Save) हो गया है!");
+    alert("खाईवाल का नंबर सफलतापूर्वक सुरक्षित हो गया है! अब यह हमेशा सेव रहेगा।");
   };
 
-  // WhatsApp पर भेजने का फंक्शन
+  // WhatsApp मैसेज का नया प्रोफेशनल फॉर्मेट
   const handleWhatsAppClick = () => {
     if (!khaiwalNumber) {
       alert("कृपया पहले खाईवाल का व्हाट्सएप नंबर सेव करें!");
@@ -70,25 +68,23 @@ const KhaiwalTab = () => {
       return;
     }
 
-    const totalAmount = 30 * amountPerJodi; // कुल राशि का हिसाब
-    const message = `नमस्ते, मैं ${selectedGame} गेम खेलना चाहता/चाहती हूँ।\n\nये रही मेरी आज की 30 जोड़ियाँ:\n${jodiText}\n\nप्रति जोड़ी: ₹${amountPerJodi}\nकुल राशि (Total Amount): ₹${totalAmount}`;
+    const totalAmount = 30 * amountPerJodi; 
+    // नया फॉर्मेट
+    const message = `**${selectedGame}**\n\n${jodiText}\n\nप्रति जोड़ी: ₹${amountPerJodi}\nकुल राशि (Total Amount): ₹${totalAmount}`;
     
-    // व्हाट्सएप लिंक (बिना API के)
-    const formattedNumber = khaiwalNumber.replace(/\D/g, ''); // फालतू स्पेस हटाना
+    const formattedNumber = khaiwalNumber.replace(/\D/g, ''); 
     const url = `https://wa.me/91${formattedNumber}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
   };
 
-  // 30 जोड़ी ऑटो-फिल करने का फंक्शन
   const handleGenerateClick = () => {
-    // हम मान कर चल रहे हैं कि PredictTab में बनी 30 जोड़ियाँ localStorage में "lastPrediction" नाम से सेव होंगी
     const savedJodis = localStorage.getItem("lastPrediction");
     
     if (savedJodis) {
       try {
-        const jodisArr = JSON.parse(savedJodis); // JSON से Array बनाना
+        const jodisArr = JSON.parse(savedJodis); 
         if (Array.isArray(jodisArr) && jodisArr.length > 0) {
-          setJodiText(jodisArr.join(", ")); // कॉमा लगाकर टेक्स्ट बॉक्स में भरना
+          setJodiText(jodisArr.join(", ")); 
           return;
         }
       } catch (e) {
@@ -99,14 +95,12 @@ const KhaiwalTab = () => {
     alert("अभी कोई नई प्रेडिक्शन नहीं मिली है! कृपया पहले 'आज की प्रेडिक्शन' टैब में जाकर जोड़ियाँ निकालें।");
   };
 
-  // एक्सेल (CSV) डाउनलोड करने का फंक्शन
   const handleDownloadExcel = () => {
     if (!startDate || !endDate) {
       alert("कृपया शुरुआत और अंत की तारीख चुनें!");
       return;
     }
 
-    // यह अभी डमी डेटा है, बाद में इसे हम Firebase या Ledger से कनेक्ट करेंगे
     const csvContent = "data:text/csv;charset=utf-8,तारीख (Date),गेम (Game),जोड़ी (Jodis),अमाउंट (Amount),स्टेटस (Status)\n"
       + `${startDate},FD,"12, 14, 15...",300,Pending\n`
       + `${endDate},GB,"22, 24, 25...",300,Pass\n`;
@@ -123,13 +117,11 @@ const KhaiwalTab = () => {
   return (
     <div className="p-4 max-w-md mx-auto space-y-6 mb-24">
       
-      {/* हेडर (Header) */}
       <div>
         <h1 className="text-3xl font-bold text-white mb-1">खाईवाल</h1>
         <p className="text-slate-400 text-sm">30 जोड़ी खाईवाल को भेजें</p>
       </div>
 
-      {/* खाईवाल नंबर सेव करने का सेक्शन */}
       <div className="bg-[#131C31] rounded-2xl p-4 border border-gray-800">
         <h3 className="text-slate-300 text-sm mb-3">खाईवाल का व्हाट्सएप नंबर</h3>
         <div className="flex gap-2">
@@ -140,7 +132,7 @@ const KhaiwalTab = () => {
             value={khaiwalNumber}
             onChange={(e) => setKhaiwalNumber(e.target.value)}
             placeholder="10 अंकों का मोबाइल नंबर"
-            className="flex-1 bg-[#0B1120] text-teal-400 border border-gray-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-teal-500 font-bold tracking-widest"
+            className={`flex-1 bg-[#0B1120] text-teal-400 border border-gray-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-teal-500 font-bold tracking-widest ${!isEditingNumber ? 'opacity-70' : ''}`}
           />
           {isEditingNumber ? (
             <button onClick={handleSaveNumber} className="bg-teal-500 hover:bg-teal-600 text-white px-4 rounded-xl font-bold transition">
@@ -154,7 +146,6 @@ const KhaiwalTab = () => {
         </div>
       </div>
 
-      {/* Trusted VIP Khaiwal Card */}
       <div className="bg-[#0f9d58] rounded-2xl p-5 shadow-lg relative overflow-hidden">
         <div className="flex justify-between items-center mb-5">
           <div className="flex items-center gap-2">
@@ -177,7 +168,6 @@ const KhaiwalTab = () => {
           </div>
         </div>
 
-        {/* WhatsApp & Play Now Buttons */}
         <div className="grid grid-cols-2 gap-3">
           <button onClick={handleWhatsAppClick} className="flex items-center justify-center gap-2 bg-white text-[#0f9d58] font-bold py-2.5 rounded-xl hover:bg-gray-100 transition">
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -191,7 +181,6 @@ const KhaiwalTab = () => {
         </div>
       </div>
 
-      {/* Game Selection & Amount */}
       <div className="bg-[#131C31] rounded-2xl p-4 border border-gray-800">
         <h3 className="text-slate-300 text-sm mb-3">गेम और अमाउंट चुनें</h3>
         <div className="grid grid-cols-4 gap-2 mb-4">
@@ -225,7 +214,6 @@ const KhaiwalTab = () => {
         </div>
       </div>
 
-      {/* 30 Jodi Text Area */}
       <div className="bg-[#131C31] rounded-2xl p-4 border border-gray-800">
         <textarea
           className="w-full bg-[#0B1120] text-teal-400 border border-gray-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none font-mono text-center mb-3"
@@ -246,7 +234,6 @@ const KhaiwalTab = () => {
         </button>
       </div>
 
-      {/* Excel Report Download Section */}
       <div className="bg-[#131C31] rounded-2xl p-4 border border-gray-800">
         <h3 className="text-slate-300 text-sm mb-3">खाईवाल एक्सेल रिपोर्ट (Excel/CSV)</h3>
         <div className="grid grid-cols-2 gap-3 mb-3">

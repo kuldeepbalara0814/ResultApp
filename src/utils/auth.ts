@@ -8,12 +8,13 @@ export interface AppUser {
   id: string;
   username: string;
   password?: string;
+  role: 'super-admin' | 'sub-admin' | 'user'; 
   isActive: boolean;
   createdAt: string;
 }
 
 // -----------------------------------------------------
-// 1. ADMIN PASSWORD MANAGEMENT (100% FIREBASE LIVE)
+// 1. ADMIN PASSWORD MANAGEMENT
 // -----------------------------------------------------
 export const getAdminPassword = async (): Promise<string> => {
   try {
@@ -22,7 +23,6 @@ export const getAdminPassword = async (): Promise<string> => {
     if (snap.exists()) {
       return snap.data().password;
     } else {
-      // अगर डेटाबेस में पासवर्ड नहीं है, तो डिफ़ॉल्ट 'admin123' सेट करें
       await setDoc(docRef, { password: 'admin123' });
       return 'admin123';
     }
@@ -48,15 +48,24 @@ export const checkAdminPassword = async (password: string): Promise<boolean> => 
   return password === currentPassword;
 };
 
-
 // -----------------------------------------------------
-// 2. USER MANAGEMENT (100% FIREBASE LIVE)
+// 2. USER MANAGEMENT
 // -----------------------------------------------------
 export const getUsers = async (): Promise<AppUser[]> => {
   try {
     const snap = await getDocs(collection(db, 'users'));
     const users: AppUser[] = [];
-    snap.forEach(document => users.push(document.data() as AppUser));
+    snap.forEach(document => {
+      const data = document.data();
+      users.push({
+        id: document.id,
+        username: data.username || '',
+        password: data.password || '',
+        role: data.role || 'user', 
+        isActive: data.isActive !== undefined ? data.isActive : true,
+        createdAt: data.createdAt || new Date().toISOString()
+      });
+    });
     return users;
   } catch (error) {
     console.error('यूज़र्स निकालने में एरर:', error);
@@ -75,11 +84,12 @@ export const addUser = async (username: string, password?: string): Promise<AppU
     id,
     username,
     password,
+    role: 'user', 
     isActive: true,
     createdAt: new Date().toISOString()
   };
   
-  await setDoc(doc(db, 'users', id), newUser);
+  await setDoc(doc(db, 'users', username.trim()), newUser); 
   return newUser;
 };
 
@@ -103,7 +113,6 @@ export const deleteUser = async (id: string) => {
   }
 };
 
-// नया फंक्शन: यूज़र का पासवर्ड Firebase में लाइव अपडेट करने के लिए
 export const updateUserPassword = async (id: string, newPassword: string) => {
   try {
     const userRef = doc(db, 'users', id);
@@ -115,27 +124,26 @@ export const updateUserPassword = async (id: string, newPassword: string) => {
   }
 };
 
-export const checkUserLogin = async (username: string, password?: string): Promise<boolean | 'inactive' | 'not_found'> => {
+export const checkUserLogin = async (username: string, password?: string) => {
   try {
     const users = await getUsers();
     const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
     
-    if (!user) return 'not_found';
-    if (!user.isActive) return 'inactive';
-    if (user.password && user.password !== password) return false;
+    if (!user) return { success: false, status: 'not_found' };
+    if (!user.isActive) return { success: false, status: 'inactive' };
+    if (user.password && user.password !== password) return { success: false, status: 'wrong_password' };
     
-    return true;
+    return { success: true, role: user.role };
   } catch (error) {
     console.error(error);
-    return 'not_found';
+    return { success: false, status: 'error' };
   }
 };
-
 
 // -----------------------------------------------------
 // 3. SESSION MANAGEMENT (LOCAL)
 // -----------------------------------------------------
-export const loginUser = (name: string, role: 'admin' | 'user' | 'guest') => {
+export const loginUser = (name: string, role: 'super-admin' | 'sub-admin' | 'user' | 'guest') => {
   sessionStorage.setItem(CURRENT_USER_KEY, name);
   sessionStorage.setItem(CURRENT_ROLE_KEY, role);
   sessionStorage.setItem('is_auth', 'true');

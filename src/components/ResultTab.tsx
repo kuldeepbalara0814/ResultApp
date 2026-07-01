@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Calendar, CheckCircle, Upload } from 'lucide-react';
+import { Save, Calendar, CheckCircle, Upload, Database, Download } from 'lucide-react';
 import { GameResult } from '../types';
-import { getResultByDate, saveResult, saveMultipleResults } from '../utils/storage';
+// यहाँ getAllResultsSorted को इम्पोर्ट किया गया है ताकि हम लिस्ट दिखा सकें और डाउनलोड कर सकें
+import { getResultByDate, saveResult, saveMultipleResults, getAllResultsSorted } from '../utils/storage';
 
 export default function ResultTab() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -15,6 +16,24 @@ export default function ResultTab() {
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [bulkSuccess, setBulkSuccess] = useState('');
+  
+  // नया स्टेट: हाल ही में सेव किए गए रिज़ल्ट दिखाने के लिए
+  const [recentResults, setRecentResults] = useState<GameResult[]>([]);
+
+  // डेटाबेस से रीसेंट रिज़ल्ट लोड करने का फंक्शन
+  const loadRecentResults = () => {
+    try {
+      const all = getAllResultsSorted();
+      setRecentResults(all.slice(0, 5)); // सिर्फ आखिरी 5 दिन का दिखाएंगे ताकि पेज भारी न हो
+    } catch (e) {
+      console.error("Error loading recent results", e);
+    }
+  };
+
+  // पहली बार पेज खुलने पर रीसेंट रिज़ल्ट लोड करें
+  useEffect(() => {
+    loadRecentResults();
+  }, []);
 
   // Load existing data when date changes
   useEffect(() => {
@@ -48,6 +67,8 @@ export default function ResultTab() {
     await saveResult(resultToSave); // इंतज़ार करेगा जब तक डेटा सेफ न हो जाए
     
     setShowSuccess(true);
+    loadRecentResults(); // सेव होने के तुरंत बाद लिस्ट अपडेट करें
+    
     setTimeout(() => setShowSuccess(false), 2000);
   };
 
@@ -98,6 +119,8 @@ export default function ResultTab() {
         });
       }
       
+      loadRecentResults(); // बल्क सेव होने के तुरंत बाद लिस्ट अपडेट करें
+
       setTimeout(() => {
         setBulkSuccess('');
         setShowBulkImport(false);
@@ -105,6 +128,34 @@ export default function ResultTab() {
     } else {
       setBulkSuccess('कोई सही रिज़ल्ट डेटा नहीं मिला। फॉर्मेट चेक करें।');
       setTimeout(() => setBulkSuccess(''), 3000);
+    }
+  };
+
+  // नया फीचर: पूरा डेटाबेस CSV में डाउनलोड करने के लिए
+  const handleDownloadDatabase = () => {
+    try {
+      const all = getAllResultsSorted();
+      if (all.length === 0) {
+        alert("डेटाबेस में अभी कोई रिज़ल्ट नहीं है!");
+        return;
+      }
+      
+      let csvContent = "Date,FD,GB,GL,DS\n";
+      all.forEach(r => {
+        csvContent += `${r.date},${r.fd || '--'},${r.gb || '--'},${r.gl || '--'},${r.ds || '--'}\n`;
+      });
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `SahilMaster_Database_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {
+      console.error("Download failed", e);
+      alert("डाउनलोड में कोई समस्या आई।");
     }
   };
 
@@ -125,7 +176,7 @@ export default function ResultTab() {
       </p>
 
       {showBulkImport && (
-        <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-4 animate-in fade-in zoom-in duration-300">
           <h2 className="text-white font-medium">3 महीने का रिज़ल्ट पेस्ट करें (Bulk Import)</h2>
           <p className="text-xs text-slate-400">
             फॉर्मेट: YYYY-MM-DD | FD | GB | GL | DS<br/>
@@ -246,6 +297,43 @@ export default function ResultTab() {
             </>
           )}
         </button>
+      </div>
+
+      {/* === नया सेक्शन: डेटाबेस वेरिफिकेशन === */}
+      <div className="mt-8 space-y-4 animate-in slide-in-from-bottom-4 fade-in duration-500">
+        <div className="flex items-center justify-between">
+           <h3 className="text-teal-400 font-bold flex items-center gap-2">
+             <Database className="w-5 h-5" /> सिस्टम डेटाबेस चेक
+           </h3>
+        </div>
+        
+        <button 
+          onClick={handleDownloadDatabase} 
+          className="w-full bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium py-3 rounded-xl flex items-center justify-center gap-2 border border-slate-700 transition-colors"
+        >
+          <Download className="w-4 h-4 text-teal-400" /> पूरा रिज़ल्ट डेटाबेस डाउनलोड करें (CSV)
+        </button>
+
+        <div className="bg-[#111827] border border-slate-800 rounded-2xl p-4 shadow-inner">
+          <h4 className="text-xs text-slate-400 mb-3 font-semibold uppercase tracking-wider">हाल ही में सेव किए गए रिज़ल्ट (Last 5)</h4>
+          {recentResults.length > 0 ? (
+            <div className="space-y-2">
+              {recentResults.map((res, i) => (
+                <div key={i} className="flex justify-between items-center text-xs bg-[#0B1120] p-2.5 rounded-lg border border-slate-800/80">
+                  <span className="text-white font-medium">{res.date}</span>
+                  <div className="flex gap-3">
+                    <span className="text-slate-500">FD: <span className="text-slate-200">{res.fd || '--'}</span></span>
+                    <span className="text-slate-500">GB: <span className="text-slate-200">{res.gb || '--'}</span></span>
+                    <span className="text-slate-500">GL: <span className="text-slate-200">{res.gl || '--'}</span></span>
+                    <span className="text-teal-500 font-medium">DS: <span className="text-teal-400">{res.ds || '--'}</span></span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500 text-center py-4">सिस्टम में कोई पुराना रिज़ल्ट नहीं मिला।</p>
+          )}
+        </div>
       </div>
     </div>
   );

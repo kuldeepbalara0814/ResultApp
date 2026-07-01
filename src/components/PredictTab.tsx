@@ -276,10 +276,10 @@ export default function PredictTab() {
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-6 pb-24">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
         <h1 className="text-xl font-bold text-[#e6007a]">आज की प्रेडिक्शन</h1>
         
-        <div className="flex bg-[#0b171e] rounded-xl p-1 border border-[#008080]/30">
+        <div className="flex bg-[#0b171e] rounded-xl p-1 border border-[#008080]/30 shrink-0">
           <button 
             onClick={() => setPlayMode('safe')}
             className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1 transition-colors ${playMode === 'safe' ? 'bg-[#008080] text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
@@ -295,10 +295,10 @@ export default function PredictTab() {
         </div>
       </div>
 
-      <div className="bg-[#0b171e] border border-[#008080]/30 rounded-2xl p-5 space-y-6 shadow-lg shadow-[#008080]/5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-white font-semibold">नंबर दर्ज करें</h2>
-          <div className="flex bg-[#051014] rounded-lg p-1 border border-[#008080]/20">
+      <div className="bg-[#0b171e] border border-[#008080]/30 rounded-2xl p-5 space-y-6 shadow-lg shadow-[#008080]/5 relative">
+        <div className="flex flex-wrap items-center justify-between gap-3 relative z-20">
+          <h2 className="text-white font-semibold whitespace-nowrap">नंबर दर्ज करें</h2>
+          <div className="flex bg-[#051014] rounded-lg p-1 border border-[#008080]/20 shrink-0 shadow-sm">
             <button 
               onClick={() => setInputMode('auto')}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${inputMode === 'auto' ? 'bg-[#e6007a] text-white' : 'text-slate-400 hover:text-white'}`}
@@ -314,7 +314,7 @@ export default function PredictTab() {
           </div>
         </div>
         
-        <div className="space-y-2">
+        <div className="space-y-2 relative z-10">
           <label className="text-sm text-slate-300">प्रेडिक्शन की तारीख</label>
           <input 
             type="date" 
@@ -325,7 +325,7 @@ export default function PredictTab() {
           />
         </div>
 
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 gap-3 relative z-10">
           {(['fd', 'gb', 'gl', 'ds'] as const).map((key) => (
             <div key={key} className="space-y-2 text-center">
               <label className="text-sm font-medium text-slate-300 uppercase">{key}</label>
@@ -348,7 +348,7 @@ export default function PredictTab() {
         </div>
         
         {inputMode === 'auto' && (
-          <div className="text-xs text-[#00e6e6]/70 flex items-center justify-center gap-1">
+          <div className="text-xs text-[#00e6e6]/70 flex items-center justify-center gap-1 relative z-10">
             <RefreshCw className="w-3 h-3" /> लेटेस्ट रिजल्ट से डेटा ऑटो-फेच किया गया है।
           </div>
         )}

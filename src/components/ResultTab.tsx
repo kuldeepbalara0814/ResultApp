@@ -1,41 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Calendar, CheckCircle, Upload, Database, Download } from 'lucide-react';
+import { Save, Calendar, CheckCircle, Upload, Database, Download, Trash2, AlertTriangle } from 'lucide-react';
 import { GameResult } from '../types';
-// यहाँ getAllResultsSorted को इम्पोर्ट किया गया है ताकि हम लिस्ट दिखा सकें और डाउनलोड कर सकें
-import { getResultByDate, saveResult, saveMultipleResults, getAllResultsSorted } from '../utils/storage';
+import { getResultByDate, saveResult, saveMultipleResults, getAllResultsSorted, deleteResultsByDateRange } from '../utils/storage';
+
+// === SMART TIME RULE ===
+const getDefaultDate = () => {
+  const d = new Date();
+  if (d.getHours() < 12) {
+    d.setDate(d.getDate() - 1);
+  }
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export default function ResultTab() {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getDefaultDate()); 
+  
   const [inputs, setInputs] = useState({
-    fd: '',
-    gb: '',
-    gl: '',
-    ds: ''
+    fd: '', gb: '', gl: '', ds: ''
   });
+  
   const [showSuccess, setShowSuccess] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [bulkSuccess, setBulkSuccess] = useState('');
-  
-  // नया स्टेट: हाल ही में सेव किए गए रिज़ल्ट दिखाने के लिए
   const [recentResults, setRecentResults] = useState<GameResult[]>([]);
 
-  // डेटाबेस से रीसेंट रिज़ल्ट लोड करने का फंक्शन
+  // === Delete Range State ===
+  const [delStartDate, setDelStartDate] = useState('');
+  const [delEndDate, setDelEndDate] = useState('');
+  const [delMessage, setDelMessage] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const loadRecentResults = () => {
     try {
       const all = getAllResultsSorted();
-      setRecentResults(all.slice(0, 5)); // सिर्फ आखिरी 5 दिन का दिखाएंगे ताकि पेज भारी न हो
+      setRecentResults(all.slice(0, 5)); 
     } catch (e) {
       console.error("Error loading recent results", e);
     }
   };
 
-  // पहली बार पेज खुलने पर रीसेंट रिज़ल्ट लोड करें
   useEffect(() => {
     loadRecentResults();
   }, []);
 
-  // Load existing data when date changes
   useEffect(() => {
     const existingData = getResultByDate(date);
     if (existingData) {
@@ -54,7 +65,6 @@ export default function ResultTab() {
     setInputs(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  // Firebase Hybrid Sync के लिए async/await लगाया गया है ताकि चेन न टूटे
   const handleSave = async () => {
     const resultToSave: GameResult = {
       date,
@@ -64,15 +74,14 @@ export default function ResultTab() {
       ds: inputs.ds
     };
     
-    await saveResult(resultToSave); // इंतज़ार करेगा जब तक डेटा सेफ न हो जाए
+    await saveResult(resultToSave); 
     
     setShowSuccess(true);
-    loadRecentResults(); // सेव होने के तुरंत बाद लिस्ट अपडेट करें
+    loadRecentResults(); 
     
     setTimeout(() => setShowSuccess(false), 2000);
   };
 
-  // Bulk Import के लिए भी async/await लगाया गया है
   const handleBulkImport = async () => {
     if (!bulkText.trim()) return;
     
@@ -89,14 +98,9 @@ export default function ResultTab() {
         const glVal = parts[3].replace(/--/g, '');
         const dsVal = parts[4].replace(/--/g, '');
         
-        // basic date validation YYYY-MM-DD
         if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
           newResults.push({
-            date: dateStr,
-            fd: fdVal,
-            gb: gbVal,
-            gl: glVal,
-            ds: dsVal
+            date: dateStr, fd: fdVal, gb: gbVal, gl: glVal, ds: dsVal
           });
           imported++;
         }
@@ -104,22 +108,18 @@ export default function ResultTab() {
     }
     
     if (newResults.length > 0) {
-      await saveMultipleResults(newResults); // Firebase पर एक साथ पूरा बल्क सेव करेगा
+      await saveMultipleResults(newResults); 
       setBulkSuccess(`सफलतापूर्वक ${imported} दिन का रिज़ल्ट इंपोर्ट हो गया!`);
       setBulkText('');
       
-      // Reload current date data
       const existingData = getResultByDate(date);
       if (existingData) {
         setInputs({
-          fd: existingData.fd || '',
-          gb: existingData.gb || '',
-          gl: existingData.gl || '',
-          ds: existingData.ds || ''
+          fd: existingData.fd || '', gb: existingData.gb || '', gl: existingData.gl || '', ds: existingData.ds || ''
         });
       }
       
-      loadRecentResults(); // बल्क सेव होने के तुरंत बाद लिस्ट अपडेट करें
+      loadRecentResults(); 
 
       setTimeout(() => {
         setBulkSuccess('');
@@ -131,7 +131,6 @@ export default function ResultTab() {
     }
   };
 
-  // नया फीचर: पूरा डेटाबेस CSV में डाउनलोड करने के लिए
   const handleDownloadDatabase = () => {
     try {
       const all = getAllResultsSorted();
@@ -159,6 +158,41 @@ export default function ResultTab() {
     }
   };
 
+  // === Delete Range Handler ===
+  const handleDeleteRange = async () => {
+    if (!delStartDate || !delEndDate) {
+      alert("कृपया शुरुआत और अंत की तारीख चुनें!");
+      return;
+    }
+    if (delStartDate > delEndDate) {
+      alert("शुरुआती तारीख (From Date) अंत की तारीख (To Date) से बड़ी नहीं हो सकती!");
+      return;
+    }
+
+    const confirmDelete = window.confirm(`चेतावनी: क्या आप सच में ${delStartDate} से लेकर ${delEndDate} तक का सारा डेटा हटाना चाहते हैं?\n\nयह डेटा Firebase और आपके फ़ोन दोनों से हमेशा के लिए उड़ जाएगा।`);
+    
+    if (confirmDelete) {
+      setIsDeleting(true);
+      const deletedCount = await deleteResultsByDateRange(delStartDate, delEndDate);
+      setIsDeleting(false);
+
+      if (deletedCount > 0) {
+        setDelMessage(`✅ सफलतापूर्वक ${deletedCount} दिन का डेटा डिलीट कर दिया गया है।`);
+        loadRecentResults(); // लिस्ट रिफ्रेश करें
+        
+        // अगर आज का ही डेटा उड़ गया है, तो इनपुट बॉक्स भी खाली कर दें
+        const existingData = getResultByDate(date);
+        if (!existingData) {
+          setInputs({ fd: '', gb: '', gl: '', ds: '' });
+        }
+      } else {
+        setDelMessage(`⚠️ इस तारीख के बीच कोई रिज़ल्ट डेटा नहीं मिला।`);
+      }
+
+      setTimeout(() => setDelMessage(''), 4000);
+    }
+  };
+
   return (
     <div className="p-4 space-y-6 pb-24">
       <div className="flex items-center justify-between">
@@ -172,9 +206,10 @@ export default function ResultTab() {
       </div>
       
       <p className="text-sm text-slate-400">
-        रिजल्ट दर्ज करें। DS का रिजल्ट अगली सुबह आता है, पर उसे पिछली रात की तारीख (मेन डेट) के अंदर ही फीड करें।
+        रिजल्ट दर्ज करें। (एडिट करने के लिए बस वही तारीख चुनें और नया रिज़ल्ट सेव कर दें, पुराना अपने आप हट जाएगा)
       </p>
 
+      {/* Bulk Import Section */}
       {showBulkImport && (
         <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-4 animate-in fade-in zoom-in duration-300">
           <h2 className="text-white font-medium">3 महीने का रिज़ल्ट पेस्ट करें (Bulk Import)</h2>
@@ -202,6 +237,7 @@ export default function ResultTab() {
         </div>
       )}
 
+      {/* Main Single Result Entry */}
       <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 space-y-6">
         <div className="space-y-2">
           <label className="text-sm text-slate-300 flex items-center gap-2">
@@ -299,7 +335,7 @@ export default function ResultTab() {
         </button>
       </div>
 
-      {/* === नया सेक्शन: डेटाबेस वेरिफिकेशन === */}
+      {/* Database Checklist & Recent Results */}
       <div className="mt-8 space-y-4 animate-in slide-in-from-bottom-4 fade-in duration-500">
         <div className="flex items-center justify-between">
            <h3 className="text-teal-400 font-bold flex items-center gap-2">
@@ -335,6 +371,59 @@ export default function ResultTab() {
           )}
         </div>
       </div>
+
+      {/* === Danger Zone: Delete by Date Range === */}
+      <div className="mt-8 border border-red-900/50 bg-red-950/20 rounded-2xl p-5 space-y-4">
+        <h3 className="text-red-500 font-bold flex items-center gap-2 mb-2">
+          <AlertTriangle className="w-5 h-5" /> डेंजर ज़ोन (डेटा हटाएं)
+        </h3>
+        <p className="text-xs text-slate-400">
+          अगर आपने गलती से कोई गलत डेटा या डुप्लीकेट फाइल इंपोर्ट कर ली है, तो आप यहाँ से एक डेट रेंज चुनकर उस बीच का सारा डेटा एक साथ मिटा सकते हैं।
+        </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-xs text-slate-400">कब से? (From Date)</label>
+            <input 
+              type="date" 
+              value={delStartDate}
+              onChange={(e) => setDelStartDate(e.target.value)}
+              className="w-full bg-[#0B1120] border border-red-900/30 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-red-500 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-slate-400">कब तक? (To Date)</label>
+            <input 
+              type="date" 
+              value={delEndDate}
+              onChange={(e) => setDelEndDate(e.target.value)}
+              className="w-full bg-[#0B1120] border border-red-900/30 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-red-500 text-sm"
+            />
+          </div>
+        </div>
+
+        <button 
+          onClick={handleDeleteRange}
+          disabled={isDeleting}
+          className="w-full bg-red-900/40 hover:bg-red-800 text-red-100 border border-red-800 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50 mt-2"
+        >
+          {isDeleting ? (
+            <span className="animate-pulse">डेटा डिलीट हो रहा है...</span>
+          ) : (
+            <>
+              <Trash2 className="w-4 h-4" />
+              <span>चुनी हुई तारीख का डेटा डिलीट करें</span>
+            </>
+          )}
+        </button>
+        
+        {delMessage && (
+          <div className={`text-xs text-center font-medium p-2 rounded-lg ${delMessage.includes('✅') ? 'bg-green-900/20 text-green-400' : 'bg-red-900/20 text-red-400'}`}>
+            {delMessage}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }

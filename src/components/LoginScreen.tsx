@@ -30,7 +30,7 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
     if (loginMode === 'admin') {
       const isValid = await checkAdminPassword(password);
       if (isValid) {
-        loginUser('Admin', 'admin');
+        loginUser('Admin', 'super-admin');
         onLogin();
       } else {
         setErrorMsg('गलत पासवर्ड!');
@@ -40,13 +40,15 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
         setErrorMsg('नाम और पासवर्ड दोनों दर्ज करें!');
         return;
       }
-      const status = await checkUserLogin(userName.trim(), password.trim());
-      if (status === true) {
-        loginUser(userName.trim(), 'user');
+      
+      const result = await checkUserLogin(userName.trim(), password.trim());
+      
+      if (result.success) {
+        loginUser(userName.trim(), result.role);
         onLogin();
-      } else if (status === 'inactive') {
+      } else if (result.status === 'inactive') {
         setErrorMsg('आपका अकाउंट एडमिन द्वारा ब्लॉक कर दिया गया है!');
-      } else if (status === 'not_found') {
+      } else if (result.status === 'not_found') {
         setErrorMsg('अकाउंट नहीं मिला!');
       } else {
         setErrorMsg('पासवर्ड गलत है!');
@@ -89,9 +91,9 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
         setErrorMsg('कृपया अपना नाम दर्ज करें!');
         return;
       }
-      const status = await checkUserLogin(userName.trim(), password.trim());
-      if (status === true) {
-        // Users ka password local storage me backup ke liye (jab tak DB poora setup nahi hota)
+      
+      const result = await checkUserLogin(userName.trim(), password.trim());
+      if (result.success) {
         const usersStr = localStorage.getItem('users');
         if (usersStr) {
           let users = JSON.parse(usersStr);

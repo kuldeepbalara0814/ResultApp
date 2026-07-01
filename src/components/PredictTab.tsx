@@ -33,7 +33,7 @@ export default function PredictTab() {
   const [copied, setCopied] = useState(false);
   const [logged, setLogged] = useState(false);
 
-  // --- UI LOCK SYSTEM (कुलदीप भाई के आदेशानुसार परमानेंट डिसेबल किया गया) ---
+  // --- UI LOCK SYSTEM (परमानेंट डिसेबल किया गया है) ---
   const [lockStatus, setLockStatus] = useState<{ isLocked: boolean; wonGame: string; message: string; lockedGames: string[] }>({
     isLocked: false, wonGame: '', message: '', lockedGames: []
   });
@@ -58,7 +58,6 @@ export default function PredictTab() {
 
   // --- LOCK CHECK BYPASSED ---
   useEffect(() => {
-    // यहाँ पहले ऐप लॉक होने का कोड था, जिसे अब पूरी तरह बंद कर दिया गया है।
     setLockStatus({ isLocked: false, wonGame: '', message: '', lockedGames: [] });
   }, [inputs]);
 
@@ -159,13 +158,24 @@ export default function PredictTab() {
         }
       });
 
+      // असली फॉर्मूला कॉल (10 पैरामीटर्स के साथ)
       let res = calculatePrediction(
         inputs, selectedFormulas, pastMurda, currentMonthNums, 
         todaysRes.slice(0, 4), past4DaysMurda, past10DaysNums, past15DaysNums, pastMonth1Nums, pastMonth2Nums
       );
       
-      const userRole = sessionStorage.getItem('sahil_master_current_role') || 'guest';
-      const isGuestUser = userRole !== 'admin' && userRole !== 'user';
+      // ==========================================
+      // 🛠️ BUG FIX: ROLE CHECK SYSTEM (स्नाइपर फिक्स)
+      // ==========================================
+      const sessionRole = sessionStorage.getItem('sahil_master_current_role');
+      const localRole = localStorage.getItem('userRole') || localStorage.getItem('role');
+      // रोल को लोअरकेस में बदल रहे हैं ताकि Super-Admin या super-admin दोनों काम करें
+      const activeRole = (sessionRole || localRole || 'guest').toLowerCase();
+      
+      // अब 'super-admin' और 'sub-admin' को भी असली फॉर्मूले दिखेंगे!
+      const validRoles = ['admin', 'super-admin', 'sub-admin', 'user'];
+      const isGuestUser = !validRoles.includes(activeRole);
+      // ==========================================
       
       if (isGuestUser) {
         res = {

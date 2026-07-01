@@ -1,9 +1,8 @@
 import { collection, doc, getDocs, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { GameResult, TrackerEntry } from '../types';
-import { getCurrentUser } from './auth'; // 🚨 फिक्स: लॉग-इन यूज़र का नाम लाने के लिए
+import { getCurrentUser } from './auth'; 
 
-// डायनामिक की-वर्ड्स (हर यूज़र के लिए अलग लोकल स्टोरेज)
 const getStorageKey = () => `${getCurrentUser()}_sahil_master_results`;
 const getTrackerKey = () => `${getCurrentUser()}_sahil_master_tracker_v3`;
 const getCapitalKey = () => `${getCurrentUser()}_sahil_master_initial_capital`;
@@ -32,15 +31,16 @@ export const getAllResults = (): Record<string, GameResult> => {
 };
 
 export const saveResult = async (result: GameResult) => {
-  const user = getCurrentUser(); // 🚨 यूज़र निकाला
+  const user = getCurrentUser(); 
   result.date = result.date.trim();
   const existing = getAllResults();
   existing[result.date] = result;
   localStorage.setItem(getStorageKey(), JSON.stringify(existing));
 
   try {
-    // 🚨 पाथ बदला: अब सीधे 'results' में नहीं, 'users/{user}/results' में जाएगा
-    await setDoc(doc(db, 'users', user, 'results', result.date), result);
+    if (user && user !== 'Guest' && user !== 'guest') {
+      await setDoc(doc(db, 'users', user, 'results', result.date), result);
+    }
   } catch (error) {
     console.error("Firebase Results Save Error:", error);
   }
@@ -56,8 +56,10 @@ export const saveMultipleResults = async (results: GameResult[]) => {
   localStorage.setItem(getStorageKey(), JSON.stringify(existing));
 
   try {
-    for (const r of results) {
-      await setDoc(doc(db, 'users', user, 'results', r.date), r); // 🚨 पाथ बदला
+    if (user && user !== 'Guest' && user !== 'guest') {
+      for (const r of results) {
+        await setDoc(doc(db, 'users', user, 'results', r.date), r); 
+      }
     }
   } catch (error) {
     console.error("Firebase Multiple Results Save Error:", error);
@@ -91,7 +93,9 @@ export const setInitialCapital = async (amount: number) => {
   const user = getCurrentUser();
   localStorage.setItem(getCapitalKey(), amount.toString());
   try {
-    await setDoc(doc(db, 'users', user, 'settings', 'capital'), { amount }); // 🚨 पाथ बदला
+    if (user && user !== 'Guest' && user !== 'guest') {
+      await setDoc(doc(db, 'users', user, 'settings', 'capital'), { amount }); 
+    }
   } catch (error) {
     console.error("Firebase Capital Save Error:", error);
   }
@@ -114,7 +118,9 @@ export const saveTrackerEntry = async (entry: TrackerEntry) => {
   localStorage.setItem(getTrackerKey(), JSON.stringify(existing));
 
   try {
-    await setDoc(doc(db, 'users', user, 'tracker', entry.id), entry); // 🚨 पाथ बदला
+    if (user && user !== 'Guest' && user !== 'guest') {
+      await setDoc(doc(db, 'users', user, 'tracker', entry.id), entry); 
+    }
   } catch (error) {
     console.error("Firebase Tracker Save Error:", error);
   }
@@ -141,7 +147,9 @@ export const deleteTrackerEntry = async (id: string) => {
   localStorage.setItem(getTrackerKey(), JSON.stringify(updated));
 
   try {
-    await deleteDoc(doc(db, 'users', user, 'tracker', id)); // 🚨 पाथ बदला
+    if (user && user !== 'Guest' && user !== 'guest') {
+      await deleteDoc(doc(db, 'users', user, 'tracker', id)); 
+    }
   } catch (error) {
     console.error("Firebase Tracker Delete Error:", error);
   }
@@ -152,8 +160,10 @@ export const deleteTrackerEntry = async (id: string) => {
 // ==========================================
 export const syncDataFromFirebase = async () => {
   const user = getCurrentUser();
+  if (!user || user === 'Guest' || user === 'guest') return false;
+
   try {
-    const resultsSnap = await getDocs(collection(db, 'users', user, 'results')); // 🚨 पाथ बदला
+    const resultsSnap = await getDocs(collection(db, 'users', user, 'results')); 
     const resultsData: Record<string, GameResult> = {};
     resultsSnap.forEach(doc => {
       const data = doc.data() as GameResult;
@@ -163,7 +173,7 @@ export const syncDataFromFirebase = async () => {
       localStorage.setItem(getStorageKey(), JSON.stringify(resultsData));
     }
 
-    const trackerSnap = await getDocs(collection(db, 'users', user, 'tracker')); // 🚨 पाथ बदला
+    const trackerSnap = await getDocs(collection(db, 'users', user, 'tracker')); 
     const trackerData: TrackerEntry[] = [];
     trackerSnap.forEach(doc => {
       trackerData.push(doc.data() as TrackerEntry);
@@ -172,7 +182,7 @@ export const syncDataFromFirebase = async () => {
       localStorage.setItem(getTrackerKey(), JSON.stringify(trackerData));
     }
 
-    const capitalSnap = await getDocs(collection(db, 'users', user, 'settings')); // 🚨 पाथ बदला
+    const capitalSnap = await getDocs(collection(db, 'users', user, 'settings')); 
     capitalSnap.forEach(doc => {
       if (doc.id === 'capital') {
         localStorage.setItem(getCapitalKey(), doc.data().amount.toString());
@@ -190,10 +200,10 @@ export const syncDataFromFirebase = async () => {
 // ==========================================
 export const setupLiveSync = (onDataChange?: () => void) => {
   const user = getCurrentUser();
-  if (!user || user === 'Guest' || user === 'guest') return; // अगर कोई लॉग-इन नहीं है तो सिंक न करे
+  if (!user || user === 'Guest' || user === 'guest') return; 
 
   try {
-    onSnapshot(collection(db, 'users', user, 'results'), (snapshot) => { // 🚨 पाथ बदला
+    onSnapshot(collection(db, 'users', user, 'results'), (snapshot) => { 
       const resultsData: Record<string, GameResult> = {};
       snapshot.forEach(docSnap => {
         const data = docSnap.data() as GameResult;
@@ -204,7 +214,7 @@ export const setupLiveSync = (onDataChange?: () => void) => {
       if (onDataChange) onDataChange();
     });
 
-    onSnapshot(collection(db, 'users', user, 'tracker'), (snapshot) => { // 🚨 पाथ बदला
+    onSnapshot(collection(db, 'users', user, 'tracker'), (snapshot) => { 
       const trackerData: TrackerEntry[] = [];
       snapshot.forEach(docSnap => {
         trackerData.push(docSnap.data() as TrackerEntry);
@@ -214,7 +224,7 @@ export const setupLiveSync = (onDataChange?: () => void) => {
       if (onDataChange) onDataChange();
     });
 
-    onSnapshot(doc(db, 'users', user, 'settings', 'capital'), (docSnap) => { // 🚨 पाथ बदला
+    onSnapshot(doc(db, 'users', user, 'settings', 'capital'), (docSnap) => { 
       if (docSnap.exists()) {
         localStorage.setItem(getCapitalKey(), docSnap.data().amount.toString());
         window.dispatchEvent(new Event('firebase-data-updated'));
@@ -240,7 +250,7 @@ export const downloadBackupData = () => {
     const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.download = `Sahil_Master_Backup_${user}_${new Date().toISOString().split('T')[0]}.json`; // 🚨 बैकअप फाइल के नाम में भी यूज़र का नाम
+    link.download = `Sahil_Master_Backup_${user}_${new Date().toISOString().split('T')[0]}.json`; 
     link.href = url;
     link.click();
     return true;
@@ -266,8 +276,10 @@ export const deleteResultsByDateRange = async (startDate: string, endDate: strin
 
   localStorage.setItem(getStorageKey(), JSON.stringify(existing));
   try {
-    for (const date of datesToDelete) {
-      await deleteDoc(doc(db, 'users', user, 'results', date.trim())); // 🚨 पाथ बदला
+    if (user && user !== 'Guest' && user !== 'guest') {
+      for (const date of datesToDelete) {
+        await deleteDoc(doc(db, 'users', user, 'results', date.trim())); 
+      }
     }
   } catch (error) { console.error(error); }
   return datesToDelete.length;

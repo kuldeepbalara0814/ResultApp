@@ -5,7 +5,7 @@ export interface ExtendedPredictionResult extends PredictionResult {
   report?: string; 
 }
 
-// === 🚀 DYNAMIC WEIGHTS ENGINE (ऑटो-शफल के लिए) ===
+// === 🚀 DYNAMIC WEIGHTS ENGINE (AI Shuffling Ke Liye) ===
 export interface FormulaWeights {
   MURDA_DIRECT: number;
   MURDA_FAMILY: number;
@@ -27,14 +27,16 @@ export interface FormulaWeights {
   CALENDAR_EXACT: number;
   CALENDAR_LATE: number;
   CROSS_MONTH: number;
+  FAMILY_ATTACK: number; 
 }
 
 export const DEFAULT_WEIGHTS: FormulaWeights = {
   MURDA_DIRECT: 10, MURDA_FAMILY: 6, UNIVERSAL: 10, MAGIC: 15,
   HARUF: 5, DAY_FIX: 5, BAKI: 3, EVERGREEN: 7, MONTH_TREND: 3,
-  LOGIC_3: 3, GAP_10_DAYS: 2, DANA_HIGH: 10, DANA_LOW: 5,
-  DATE_22_PRO: 3, GAP_15_DAYS: 2, GAP_1_2_STEP: 2,
-  CALENDAR_EARLY: 7, CALENDAR_EXACT: 9, CALENDAR_LATE: 5, CROSS_MONTH: 5
+  LOGIC_3: 12, GAP_10_DAYS: 2, DANA_HIGH: 10, DANA_LOW: 5,
+  DATE_22_PRO: 8, GAP_15_DAYS: 2, GAP_1_2_STEP: 2,
+  CALENDAR_EARLY: 7, CALENDAR_EXACT: 9, CALENDAR_LATE: 5, CROSS_MONTH: 5,
+  FAMILY_ATTACK: 10 
 };
 
 export const getCurrentWeights = (): FormulaWeights => {
@@ -53,6 +55,15 @@ export const saveWeights = (newWeights: FormulaWeights) => {
 const EVERGREEN = ['3', '8', '6', '1', '9', '0', '7', '2'];
 const UNIVERSAL = ['02', '20', '04', '40', '06', '60', '24', '42', '28', '82', '46', '64', '68', '86'];
 const MAGIC = ['12', '23', '84', '96'];
+
+// Kuldeep Bhai ka asli 14-number antar-3 group (Logic 3)
+const LOGIC_3_TRUE_GROUP = ['41', '14', '30', '03', '52', '25', '63', '36', '74', '47', '85', '58', '96', '69'];
+
+// Trigger 1 ke liye 30 aur 40 ki full 16-number family direct + palat ke sath
+const FAMILY_ATTACK_16_NUMS = [
+  '30', '03', '80', '08', '85', '58', '35', '53',
+  '40', '04', '90', '09', '45', '54', '59', '95'
+];
 
 const DAY_WISE_FIXED: Record<number, string[]> = {
   0: ['93', '92', '75', '73', '71', '62', '52', '38', '13', '09', '04'],
@@ -167,35 +178,39 @@ const MASTER_SHEET: Record<string, string[]> = {
   '00': ['86', '97', '49', '85', '87', '67', '69', '96', '98', '78', '80', '48', '50', '93', '95'],
 };
 
-const getFamily = (jodi: string): string[] => {
+// 8-Number Full Family + Palat Maker Function
+export const getFamily = (jodi: string): string[] => {
   const rashiMap: Record<string, string> = {
     '0': '5', '1': '6', '2': '7', '3': '8', '4': '9',
     '5': '0', '6': '1', '7': '2', '8': '3', '9': '4'
   };
   const a = jodi[0];
   const b = jodi[1];
+  if (!a || !b) return [jodi];
   const ar = rashiMap[a];
   const br = rashiMap[b];
-  return [a+b, b+a, a+br, br+a, ar+b, b+ar, ar+br, br+ar];
+  
+  const direct = [a+b, b+a, a+br, br+a, ar+b, b+ar, ar+br, br+ar];
+  return [...new Set(direct)]; 
 };
 
 const getDifference = (num1: string, num2: string) => Math.abs(parseInt(num1) - parseInt(num2));
 
-// 🚨 फिक्स: यहाँ अब पूरे 10 पैरामीटर मैच हो रहे हैं!
+// 🚨 Master Calculator Engine 
 export const calculatePrediction = (
   inputs: PredictionInput,
   selectedFormulas: string[],
-  pastMurda: string[] = [],
-  currentMonthNums: string[] = [],
-  todaysRes: string[] = [],
-  past4DaysMurda: string[] = [],
-  past10DaysNums: string[] = [],
-  past15DaysNums: string[] = [],
+  pastMurda: string[] = [],         
+  currentMonthNums: string[] = [],  
+  todaysRes: string[] = [],         
+  past4DaysMurda: string[] = [],    
+  past10DaysNums: string[] = [],    
+  past15DaysNums: string[] = [],    
   pastMonth1Nums: string[] = [], 
   pastMonth2Nums: string[] = []  
 ): ExtendedPredictionResult => {
   
-  const w = getCurrentWeights(); // डायनामिक वेट्स फेच करना
+  let w = getCurrentWeights(); 
   const dateObj = new Date(inputs.date);
   const jsDay = dateObj.getDay();
   const dayOfMonth = dateObj.getDate();
@@ -204,6 +219,7 @@ export const calculatePrediction = (
   const scoreDetailsLog: Record<string, Record<string, number>> = {};
   const rawList: string[] = [];
 
+  // Tokari Calculation Base
   todaysRes.forEach(r => {
     let key = parseInt(r.trim(), 10).toString().padStart(2, '0');
     if (MASTER_SHEET[key]) {
@@ -212,24 +228,85 @@ export const calculatePrediction = (
   });
 
   const counts: Record<string, number> = {};
-  rawList.forEach(num => {
-    counts[num] = (counts[num] || 0) + 1;
-  });
+  rawList.forEach(num => { counts[num] = (counts[num] || 0) + 1; });
 
   const outerHaruf = parseInt(dayOfMonth.toString().slice(-1));
   const rashi = (outerHaruf + 5) % 10;
-  const LOGIC_3_JORIS = ['30', '03', '41', '14', '74', '47', '85', '58', '96', '69'];
 
-  for (let i = 1; i <= 100; i++) {
-    const jodi = i === 100 ? '00' : i.toString().padStart(2, '0');
+  // ==========================================
+  // ⚡ AI AUTO-OPTIMIZER ENGINE (1% Dainik Sukshma-Sudhar)
+  // ==========================================
+  if (past15DaysNums && past15DaysNums.length > 5) {
+    let recentMurdaCount = 0;
+    for (let k = 0; k < past15DaysNums.length - 1; k++) {
+      if (past15DaysNums.slice(k + 1).includes(past15DaysNums[k])) recentMurdaCount++;
+    }
+    const murdaRatio = recentMurdaCount / past15DaysNums.length;
+    if (murdaRatio > 0.35) {
+      w.MURDA_DIRECT = parseFloat((w.MURDA_DIRECT * 1.01).toFixed(2));
+      w.MURDA_FAMILY = parseFloat((w.MURDA_FAMILY * 1.01).toFixed(2));
+    } else {
+      w.DANA_HIGH = parseFloat((w.DANA_HIGH * 1.01).toFixed(2));
+    }
+  }
+
+  // ==========================================
+  // 🚨 AUTO-KILL TRIGGERS ENGINE SCANNER
+  // ==========================================
+  
+  // A) Universal Auto-Kill Checker (Tarikh 1,2,3)
+  let isUniversalDead = false;
+  if (dayOfMonth === 2 || dayOfMonth === 3) {
+    isUniversalDead = currentMonthNums.some(num => UNIVERSAL.includes(num));
+  }
+
+  // B) Trigger 1 Auto-Kill Checker (Date 1 se 5 - 30 & 40 Ki Family)
+  let isFamilyAttackDead = false;
+  if (dayOfMonth >= 2 && dayOfMonth <= 5) {
+    isFamilyAttackDead = currentMonthNums.some(num => FAMILY_ATTACK_16_NUMS.includes(num));
+  }
+
+  // C) Logic 3 (True Difference-3 Catcher) Activation Aur Pair-Complete Killing Check
+  let isLogic3Active = false;
+  let logic3Points = 0;
+  
+  if (selectedFormulas.includes('10') && past4DaysMurda.length > 0) {
+    let triggerDayAgo = -1;
+    let totalHitsInWindow = 0;
+
+    for (let dayIdx = 1; dayIdx <= 4; dayIdx++) {
+      const startIndex = (dayIdx - 1) * 4;
+      const dayNums = past4DaysMurda.slice(startIndex, startIndex + 4);
+      const hasHit = dayNums.some(n => LOGIC_3_TRUE_GROUP.includes(n));
+      
+      if (hasHit) {
+        totalHitsInWindow += dayNums.filter(n => LOGIC_3_TRUE_GROUP.includes(n)).length;
+        if (triggerDayAgo === -1) triggerDayAgo = dayIdx; 
+      }
+    }
+
+    if (triggerDayAgo !== -1 && totalHitsInWindow < 2) {
+      isLogic3Active = true;
+      logic3Points = 13 - triggerDayAgo; 
+    }
+  }
+
+  // ==========================================
+  // 🎯 Main Jodi Scoring Loop (00 se 99)
+  // ==========================================
+  for (let i = 0; i < 100; i++) {
+    const jodi = i.toString().padStart(2, '0');
     let score = counts[jodi] || 0; 
     const details: Record<string, number> = {};
 
     if (score > 0) details['बेस (टोकरी)'] = score;
 
+    // 1. Murda Direct Aur 8-Number Full Family Tracker
     if (selectedFormulas.includes('6')) {
-      if (pastMurda.includes(jodi)) { score += w.MURDA_DIRECT; details['मुर्दा (डायरेक्ट)'] = w.MURDA_DIRECT; }
-      else {
+      if (pastMurda.includes(jodi)) { 
+        score += w.MURDA_DIRECT; 
+        details['मुर्दा (डायरेक्ट)'] = w.MURDA_DIRECT; 
+      } else {
         let isMurFam = false;
         for (const pm of pastMurda) {
           if (getFamily(pm).includes(jodi)) { isMurFam = true; break; }
@@ -238,24 +315,32 @@ export const calculatePrediction = (
       }
     }
 
+    // 2. Universal Trigger (Auto-Kill Ke Sath)
     if (selectedFormulas.includes('3') && [1,2,3].includes(dayOfMonth) && UNIVERSAL.includes(jodi)) { 
-        score += w.UNIVERSAL; details['यूनिवर्सल (1-3 दिन)'] = w.UNIVERSAL; 
+      if (!isUniversalDead) {
+        score += w.UNIVERSAL; 
+        details['यूनिवर्सल (1-3 दिन)'] = w.UNIVERSAL; 
+      }
     }
     
+    // 3. Magic Formula
     if (selectedFormulas.includes('4') && MAGIC.includes(jodi)) { 
         score += w.MAGIC; details['मैजिक फॉर्मूला'] = w.MAGIC; 
     }
     
+    // 4. Haruf Match Niyam
     if (selectedFormulas.includes('7') && (jodi.includes(outerHaruf.toString()) || jodi.includes(rashi.toString()))) { 
         score += w.HARUF; details['हरूफ मैच'] = w.HARUF; 
     }
     
+    // 5. Day-Wise Fixed
     if (selectedFormulas.includes('5') && (DAY_WISE_FIXED[jsDay] || []).includes(jodi)) { 
         score += w.DAY_FIX; details['डे-वाइज फिक्स'] = w.DAY_FIX; 
     }
 
+    // 6. Baki (Baki Rule)
     if (selectedFormulas.includes('8')) {
-      const jodiNum = parseInt(jodi);
+      const jodiNum = parseInt(jodi, 10);
       const baki = 100 - (jodiNum === 0 ? 100 : jodiNum);
       const bakiStr = baki === 100 ? '00' : baki.toString().padStart(2, '0');
       if (pastMurda.includes(bakiStr) || MAGIC.includes(bakiStr)) { 
@@ -263,28 +348,37 @@ export const calculatePrediction = (
       }
     }
 
+    // 7. Evergreen Ankk Logic
     if (selectedFormulas.includes('2') && EVERGREEN.includes(jodi[0]) && EVERGREEN.includes(jodi[1])) { 
         score += w.EVERGREEN; details['एवरग्रीन'] = w.EVERGREEN; 
     }
     
+    // 8. Month Trend
     if (selectedFormulas.includes('9') && currentMonthNums.includes(jodi)) { 
         score += w.MONTH_TREND; details['मंथ ट्रेंड'] = w.MONTH_TREND; 
     }
 
-    if (selectedFormulas.includes('10')) {
-      const isLogic3Active = LOGIC_3_JORIS.some(j => past4DaysMurda.includes(j));
-      if (isLogic3Active && LOGIC_3_JORIS.includes(jodi)) {
-        score += w.LOGIC_3; details['लॉजिक 3 जोड़ी'] = w.LOGIC_3;
-      }
+    // 9. Naya Trigger: Date 1-5 Family Attack (30 & 40 Family - Ghatte Point + Auto-Kill)
+    if (dayOfMonth <= 5 && FAMILY_ATTACK_16_NUMS.includes(jodi) && !isFamilyAttackDead) {
+      const currentDayWeight = 11 - dayOfMonth; 
+      score += currentDayWeight;
+      details['फैमिली अटैक (1-5 दिन)'] = currentDayWeight;
     }
 
+    // 10. True Logic 3 (Antar-3 Pair Cutter Engine)
+    if (isLogic3Active && LOGIC_3_TRUE_GROUP.includes(jodi)) {
+      score += logic3Points;
+      details['लॉजिक 3 जोड़ी (अंतर-3)'] = logic3Points;
+    }
+
+    // 11. 10 Din Ka Gap Frame
     if (past10DaysNums && past10DaysNums.length > 0) {
       const fam = getFamily(jodi);
       const hasAppeared = fam.some(f => past10DaysNums.includes(f));
       if (!hasAppeared) { score += w.GAP_10_DAYS; details['10 दिन गैप'] = w.GAP_10_DAYS; }
     }
 
-    // 🔴 दाना ट्रैप 
+    // 12. Dana Trap Risk Assessment
     if (past4DaysMurda && past4DaysMurda.length > 0) {
       let gotHighDana = false;
       let gotLowDana = false;
@@ -297,21 +391,21 @@ export const calculatePrediction = (
       else if (gotLowDana) { score += w.DANA_LOW; details['दाना ट्रैप (लो)'] = w.DANA_LOW; }
     }
 
-    // 🔴 22 तारीख का नियम
+    // 13. 22 Tarikh Ka Niyam (Month End 'Band Ghar' Sensor)
     if (dayOfMonth >= 22 && currentMonthNums && currentMonthNums.length > 0) {
       const fam = getFamily(jodi);
       const appearedInMonth = fam.some(f => currentMonthNums.includes(f));
       if (!appearedInMonth) { score += w.DATE_22_PRO; details['22+ डेट प्रो नियम'] = w.DATE_22_PRO; }
     }
 
-    // 🔴 15 दिन बंद घर
+    // 14. 15 Din Band Ghar
     if (past15DaysNums && past15DaysNums.length > 0) {
       const fam = getFamily(jodi);
       const appearedIn15Days = fam.some(f => past15DaysNums.includes(f));
       if (!appearedIn15Days) { score += w.GAP_15_DAYS; details['15 दिन बंद घर'] = w.GAP_15_DAYS; }
     }
 
-    // 🔴 3rd Step Gap 
+    // 15. 3rd Step Calendar Gap Engine
     if (past15DaysNums && past15DaysNums.length > 0) {
       const appearanceIndices: number[] = [];
       for (let k = 0; k < past15DaysNums.length; k++) {
@@ -320,10 +414,10 @@ export const calculatePrediction = (
       const daysAgoList = [...new Set(appearanceIndices.map(k => Math.floor(k / 4) + 1))].sort((a, b) => a - b);
 
       if (daysAgoList.length >= 1) {
-          score += w.GAP_1_2_STEP; details['गैप 1st/2nd स्टेप'] = w.GAP_1_2_STEP;
+          score += w.GAP_1_2_STEP; details['गैप 1st/2ndステップ'] = w.GAP_1_2_STEP;
           if (daysAgoList.length >= 2) {
-              const t2 = daysAgoList[0]; 
-              const t1 = daysAgoList[1]; 
+              const t2 = daysAgoList[0] || 0; 
+              const t1 = daysAgoList[1] || 0; 
               const gap = t1 - t2;       
               const targetDelta = t2 - gap; 
 
@@ -334,7 +428,7 @@ export const calculatePrediction = (
       }
     }
 
-    // 🔴 क्रॉस-मंथ शिफ्ट ट्रैप
+    // 16. Cross-Month Shift Trap
     if (pastMonth1Nums.length > 0 || pastMonth2Nums.length > 0) {
       const fam = getFamily(jodi);
       let monthShiftMatch = false;
@@ -347,6 +441,8 @@ export const calculatePrediction = (
       }
     }
 
+    // -100 POINT LOGIC SAFELY REMOVED HERE AS REQUESTED
+
     jodiScores[jodi] = score;
     if (score > 0) scoreDetailsLog[jodi] = details; 
   }
@@ -354,15 +450,16 @@ export const calculatePrediction = (
   const sortedJodis = Object.keys(jodiScores).sort((a, b) => jodiScores[b] - jodiScores[a]);
   const final30 = sortedJodis.slice(0, 30);
 
+  // Audit Report Builder
   let reportStr = `📅 साहिल मास्टर - प्रेडिक्शन ऑडिट रिपोर्ट (${inputs.date})\n`;
   reportStr += `-------------------------------------------------\n`;
   reportStr += `इस रिपोर्ट में आप देख सकते हैं कि कंप्यूटर ने किस जोड़ी को कितने पॉइंट और क्यों दिए हैं।\n\n`;
   reportStr += `🏆 टॉप 30 जोड़ियों का हिसाब:\n\n`;
 
   final30.forEach((jodi, index) => {
-      const details = scoreDetailsLog[jodi];
-      const detailStr = Object.entries(details).map(([k, v]) => `${k}: +${v}`).join('  |  ');
-      reportStr += `#${(index + 1).toString().padStart(2, '0')}. जोड़ी [${jodi}] - कुल पॉइंट: ${jodiScores[jodi]}\n      कारण ➔ ${detailStr}\n\n`;
+      const details = scoreDetailsLog[jodi] || {};
+      const detailStr = Object.entries(details).map(([k, v]) => `${k}: ${v >= 0 ? '+' : ''}${v}`).join('  |  ');
+      reportStr += `#${(index + 1).toString().padStart(2, '0')}. जोड़ी [${jodi}] - कुल पॉइंट: ${Math.max(0, jodiScores[jodi] || 0)}\n      कारण ➔ ${detailStr}\n\n`;
   });
 
   const alertsSet = new Set<string>();
@@ -370,7 +467,7 @@ export const calculatePrediction = (
     const fam = getFamily(jodi);
     const appearedIn15Days = past15DaysNums ? fam.some(f => past15DaysNums.includes(f)) : true;
     if (!appearedIn15Days) {
-      const baseFam = Math.min(...fam.map(n => parseInt(n))).toString().padStart(2, '0');
+      const baseFam = Math.min(...fam.map(n => parseInt(n, 10))).toString().padStart(2, '0');
       alertsSet.add(`⚠️ ${baseFam} की फैमिली 15 दिन से बंद है, आज इसके पूरे चांस हैं!`);
     }
   });
@@ -385,14 +482,13 @@ export const calculatePrediction = (
       tokariItems.push({ id: jodi, jodis: [jodi], count: count });
     }
   });
-  tokariItems.sort((a, b) => b.count - a.count || parseInt(a.id) - parseInt(b.id));
+  tokariItems.sort((a, b) => b.count - a.count || parseInt(a.id, 10) - parseInt(b.id, 10));
 
   return { 
     l1, l2, l3, tokari: tokariItems, alerts: Array.from(alertsSet), report: reportStr 
   };
 };
 
-// === 🤖 AI SHUFFLE ENGINE (सिर्फ एडमिन की परमिशन के लिए) ===
 export const getShuffleSuggestion = (past15DaysNums: string[]): { detected: boolean, message: string, proposedWeights: FormulaWeights | null } => {
   const current = getCurrentWeights();
   
@@ -400,13 +496,11 @@ export const getShuffleSuggestion = (past15DaysNums: string[]): { detected: bool
     return { detected: false, message: "डेटा पर्याप्त नहीं है।", proposedWeights: null };
   }
 
-  // AI का विश्लेषण: क्या मुर्दा (Repeat) ज्यादा आ रहा है?
   let murdaCount = 0;
   for (let i = 0; i < past15DaysNums.length - 1; i++) {
     if (past15DaysNums.slice(i+1).includes(past15DaysNums[i])) murdaCount++;
   }
 
-  // अगर ऑपरेटर मुर्दा बहुत ज्यादा मार रहा है (Over 40% repeat)
   if (murdaCount > (past15DaysNums.length * 0.4) && current.MURDA_DIRECT < 12) {
     const proposed = { ...current, MURDA_DIRECT: current.MURDA_DIRECT + 1, DANA_HIGH: current.DANA_HIGH - 1 };
     return { 
@@ -416,7 +510,6 @@ export const getShuffleSuggestion = (past15DaysNums: string[]): { detected: bool
     };
   }
 
-  // अगर ऑपरेटर मुर्दा बिल्कुल नहीं मार रहा (Under 10% repeat)
   if (murdaCount < (past15DaysNums.length * 0.1) && current.DANA_HIGH < 12) {
     const proposed = { ...current, MURDA_DIRECT: current.MURDA_DIRECT - 1, DANA_HIGH: current.DANA_HIGH + 1 };
     return { 

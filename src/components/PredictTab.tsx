@@ -66,24 +66,31 @@ export default function PredictTab() {
 
     setTimeout(() => {
       const pastResults = getAllResultsSorted();
+      const validPastResults = pastResults.filter(r => r.fd || r.gb || r.gl || r.ds);
+      const beforeDateResults = validPastResults.filter(r => new Date(r.date) < new Date(inputs.date));
       
+      // 🚨 बिल्कुल सही क्रम में डेटा निकालना
       const pastMurda: string[] = [];
-      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 3).forEach(r => {
+      beforeDateResults.slice(0, 3).forEach(r => {
         if (r.fd) pastMurda.push(r.fd); if (r.gb) pastMurda.push(r.gb);
         if (r.gl) pastMurda.push(r.gl); if (r.ds) pastMurda.push(r.ds);
       });
 
-      // --- 🟢 नया ट्रिगर डेटा: लॉजिक 3 के लिए पिछले 4 दिन निकालना ---
       const past4DaysMurda: string[] = [];
-      pastResults.filter(r => new Date(r.date) < new Date(inputs.date)).slice(0, 4).forEach(r => {
+      beforeDateResults.slice(0, 4).forEach(r => {
         if (r.fd) past4DaysMurda.push(r.fd); if (r.gb) past4DaysMurda.push(r.gb);
         if (r.gl) past4DaysMurda.push(r.gl); if (r.ds) past4DaysMurda.push(r.ds);
       });
-      // ---------------------------------------------------------------
+
+      const past15DaysNums: string[] = [];
+      beforeDateResults.slice(0, 15).forEach(r => {
+        if (r.fd) past15DaysNums.push(r.fd); if (r.gb) past15DaysNums.push(r.gb);
+        if (r.gl) past15DaysNums.push(r.gl); if (r.ds) past15DaysNums.push(r.ds);
+      });
 
       const currentYm = inputs.date.substring(0, 7);
       const currentMonthNums: string[] = [];
-      pastResults.filter(r => r.date.startsWith(currentYm)).forEach(r => {
+      validPastResults.filter(r => r.date.startsWith(currentYm)).forEach(r => {
         if (r.fd) currentMonthNums.push(r.fd); if (r.gb) currentMonthNums.push(r.gb);
         if (r.gl) currentMonthNums.push(r.gl); if (r.ds) currentMonthNums.push(r.ds);
       });
@@ -94,7 +101,7 @@ export default function PredictTab() {
 
       if (todaysRes.length < 4) {
         const allPastNums: string[] = [];
-        pastResults.forEach(r => {
+        validPastResults.forEach(r => {
           if (r.ds) allPastNums.push(r.ds); if (r.gl) allPastNums.push(r.gl);
           if (r.gb) allPastNums.push(r.gb); if (r.fd) allPastNums.push(r.fd);
         });
@@ -103,7 +110,7 @@ export default function PredictTab() {
         }
       }
 
-      // ===== ओरिजिनल फॉर्मूला: Cross Month Family Check (Month Shift) =====
+      // ===== Cross Month Family Check =====
       const getTargetDates = (baseDateStr: string, monthsBack: number) => {
         const [y, m, d] = baseDateStr.split('-').map(Number);
         const dates: string[] = [];
@@ -123,7 +130,7 @@ export default function PredictTab() {
       const pastMonth1Nums: string[] = [];
       const pastMonth2Nums: string[] = [];
 
-      pastResults.forEach(r => {
+      validPastResults.forEach(r => {
         if (m1Dates.includes(r.date)) {
           if (r.fd) pastMonth1Nums.push(r.fd); if (r.gb) pastMonth1Nums.push(r.gb);
           if (r.gl) pastMonth1Nums.push(r.gl); if (r.ds) pastMonth1Nums.push(r.ds);
@@ -134,10 +141,17 @@ export default function PredictTab() {
         }
       });
 
-      // 🟢 8वें पैरामीटर (past4DaysMurda) के साथ कैलकुलेशन कॉल
+      // 🚨 बिल्कुल उसी क्रम में डेटा भेजा गया है जो formulas.ts को चाहिए
       let res = calculatePrediction(
-        inputs, selectedFormulas, pastMurda, currentMonthNums, 
-        todaysRes.slice(0, 4), pastMonth1Nums, pastMonth2Nums, past4DaysMurda
+        inputs, 
+        selectedFormulas, 
+        pastMurda, 
+        currentMonthNums, 
+        todaysRes.slice(0, 4), 
+        past4DaysMurda, 
+        past15DaysNums, 
+        pastMonth1Nums, 
+        pastMonth2Nums
       );
       
       const userRole = sessionStorage.getItem('sahil_master_current_role') || 'guest';

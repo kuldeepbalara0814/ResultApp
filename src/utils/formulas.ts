@@ -137,15 +137,19 @@ const getFamily = (jodi: string): string[] => {
   return [a+b, b+a, a+br, br+a, ar+b, b+ar, ar+br, br+ar];
 };
 
+const getDifference = (num1: string, num2: string) => Math.abs(parseInt(num1) - parseInt(num2));
+
 export const calculatePrediction = (
   inputs: PredictionInput,
   selectedFormulas: string[],
   pastMurda: string[] = [],
   currentMonthNums: string[] = [],
   todaysRes: string[] = [],
+  past4DaysMurda: string[] = [],
+  past10DaysNums: string[] = [],
+  past15DaysNums: string[] = [],
   pastMonth1Nums: string[] = [],
-  pastMonth2Nums: string[] = [],
-  past4DaysMurda: string[] = [] // 8वां पैरामीटर लॉजिक 3 के लिए
+  pastMonth2Nums: string[] = []
 ): ExtendedPredictionResult => {
   const dateObj = new Date(inputs.date);
   const jsDay = dateObj.getDay();
@@ -191,7 +195,7 @@ export const calculatePrediction = (
     const jodi = i === 100 ? '00' : i.toString().padStart(2, '0');
     let score = counts[jodi] || 0; 
 
-    // --- ओरिजिनल नियम ---
+    // --- 1. मुर्दा ---
     if (selectedFormulas.includes('6')) {
       if (pastMurda.includes(jodi)) { score += 10; }
       else {
@@ -203,22 +207,27 @@ export const calculatePrediction = (
       }
     }
 
+    // --- 2. यूनिवर्सल और मैजिक ---
     if (selectedFormulas.includes('3') && [1,2,3].includes(dayOfMonth) && UNIVERSAL.includes(jodi)) { score += 10; }
     if (selectedFormulas.includes('4') && MAGIC.includes(jodi)) { score += 15; }
+    
+    // --- 3. हरूफ और डे-फिक्स ---
     if (selectedFormulas.includes('7')) {
       if (jodi.includes(outerHaruf.toString()) || jodi.includes(rashi.toString())) { score += 5; }
       if (TOP_HARUFS.includes(jodi[0]) || TOP_HARUFS.includes(jodi[1])) { score += 5; }
     }
     if (selectedFormulas.includes('5') && (DAY_WISE_FIXED[jsDay] || []).includes(jodi)) { score += 5; }
 
+    // --- 4. बाकी और एवरग्रीन ---
     if (selectedFormulas.includes('8')) {
       const jodiNum = parseInt(jodi);
       const baki = 100 - (jodiNum === 0 ? 100 : jodiNum);
       const bakiStr = baki === 100 ? '00' : baki.toString().padStart(2, '0');
       if (pastMurda.includes(bakiStr) || MAGIC.includes(bakiStr)) { score += 3; }
     }
-
     if (selectedFormulas.includes('2') && EVERGREEN.includes(jodi[0]) && EVERGREEN.includes(jodi[1])) { score += 7; }
+    
+    // --- 5. मंथ ट्रेंड ---
     if (selectedFormulas.includes('9') && currentMonthNums.includes(jodi)) { score += 3; }
 
     if (dayOfMonth >= 22 && currentMonthNums && currentMonthNums.length > 0) {
@@ -233,6 +242,56 @@ export const calculatePrediction = (
       const inM2 = fam.some(f => pastMonth2Nums.includes(f));
       if (inM1 && inM2) {
         score += 3;
+      }
+    }
+
+    // --- 🟠 6. दाना ट्रैप (ZIP वाला ओरिजिनल) ---
+    if (past4DaysMurda && past4DaysMurda.length > 0) {
+      let gotHighDana = false;
+      let gotLowDana = false;
+      for (const pastNum of past4DaysMurda) {
+        const diff = getDifference(jodi, pastNum);
+        if ([1, 2, 3, 10, 20, 30].includes(diff)) gotHighDana = true;
+        else if ([4, 5, 6, 7, 8, 9, 40, 50, 60, 70, 80, 90].includes(diff)) gotLowDana = true;
+      }
+      if (gotHighDana) {
+        score += 10;
+      } else if (gotLowDana) {
+        score += 5;
+      }
+    }
+
+    // --- 🟠 7. 15 दिन बंद घर (ZIP वाला ओरिजिनल) ---
+    if (past15DaysNums && past15DaysNums.length > 0) {
+      const fam = getFamily(jodi);
+      const appearedIn15Days = fam.some(f => past15DaysNums.includes(f));
+      if (!appearedIn15Days) {
+        score += 2;
+      }
+    }
+
+    // --- 🟠 8. 3rd Step Gap / कैलेंडर ट्रैप (ZIP वाला ओरिजिनल) ---
+    if (past15DaysNums && past15DaysNums.length > 0) {
+      const appearanceIndices: number[] = [];
+      for (let k = 0; k < past15DaysNums.length; k++) {
+        if (past15DaysNums[k] === jodi) appearanceIndices.push(k);
+      }
+      const daysAgoList = [...new Set(appearanceIndices.map(k => Math.floor(k / 4) + 1))].sort((a, b) => a - b);
+      if (daysAgoList.length >= 1) {
+        score += 2; 
+        if (daysAgoList.length >= 2) {
+          const t2 = daysAgoList[0];
+          const t1 = daysAgoList[1];
+          const gap = t1 - t2;
+          const targetDelta = t2 - gap;
+          if (targetDelta === -1) {
+            score += 7; // 1 दिन जल्दी
+          } else if (targetDelta === 0) {
+            score += 9; // सटीक दिन
+          } else if (targetDelta === 1) {
+            score += 5; // 1 दिन लेट
+          }
+        }
       }
     }
 

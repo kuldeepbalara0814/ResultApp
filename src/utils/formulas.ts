@@ -2,14 +2,13 @@ import { PredictionInput, PredictionResult, TokariItem } from '../types';
 
 export interface ExtendedPredictionResult extends PredictionResult {
   alerts?: string[];
-  report?: string; // 🟢 रिपोर्ट के लिए जोड़ा गया
+  report?: string; 
 }
 
 const EVERGREEN = ['3', '8', '6', '1', '9', '0', '7', '2'];
 const UNIVERSAL = ['02', '20', '04', '40', '06', '60', '24', '42', '28', '82', '46', '64', '68', '86'];
 const MAGIC = ['12', '23', '84', '96'];
 
-// === नए ट्रिगर ग्रुप ===
 const LOGIC_3_GROUP = ['41', '14', '30', '03', '52', '25', '63', '36', '74', '47', '85', '58', '96', '69'];
 const FAMILY_30_40 = ['30', '03', '80', '08', '85', '58', '35', '53', '40', '04', '90', '09', '45', '54', '59', '95'];
 
@@ -140,24 +139,24 @@ const getFamily = (jodi: string): string[] => {
 
 const getDifference = (num1: string, num2: string) => Math.abs(parseInt(num1) - parseInt(num2));
 
+// 🚨 सारे पैरामीटर सही क्रम में सेट कर दिए गए हैं
 export const calculatePrediction = (
   inputs: PredictionInput,
   selectedFormulas: string[],
-  pastMurda: string[] = [],
-  currentMonthNums: string[] = [],
-  todaysRes: string[] = [],
-  past4DaysMurda: string[] = [],
-  past10DaysNums: string[] = [],
-  past15DaysNums: string[] = [],
-  pastMonth1Nums: string[] = [],
-  pastMonth2Nums: string[] = []
+  pastMurda: string[],
+  currentMonthNums: string[],
+  todaysRes: string[],
+  past4DaysMurda: string[],
+  past15DaysNums: string[],
+  pastMonth1Nums: string[],
+  pastMonth2Nums: string[]
 ): ExtendedPredictionResult => {
   const dateObj = new Date(inputs.date);
   const jsDay = dateObj.getDay();
   const dayOfMonth = dateObj.getDate();
   
   const jodiScores: Record<string, number> = {};
-  const scoreDetailsLog: Record<string, Record<string, number>> = {}; // 🟢 ट्रैकर वापस जोड़ा गया
+  const scoreDetailsLog: Record<string, Record<string, number>> = {};
   const rawList: string[] = [];
 
   todaysRes.forEach(r => {
@@ -174,7 +173,6 @@ export const calculatePrediction = (
 
   const outerHaruf = parseInt(dayOfMonth.toString().slice(-1));
   const rashi = (outerHaruf + 5) % 10;
-  
   const TOP_HARUFS = ['3', '0'];
 
   // === लॉजिक 3 सेंसर ===
@@ -195,15 +193,15 @@ export const calculatePrediction = (
   for (let i = 1; i <= 100; i++) {
     const jodi = i === 100 ? '00' : i.toString().padStart(2, '0');
     let score = counts[jodi] || 0; 
-    const details: Record<string, number> = {}; // 🟢 हर जोड़ी का हिसाब
+    const details: Record<string, number> = {};
 
     if (score > 0) details['बेस (टोकरी)'] = score;
 
-    // --- 1. मुर्दा ---
+    // --- 1. मुर्दा (TXT रिपोर्ट के अनुसार 11 और 6 पॉइंट) ---
     if (selectedFormulas.includes('6')) {
       if (pastMurda.includes(jodi)) { 
-        score += 10; 
-        details['मुर्दा (डायरेक्ट)'] = 10; 
+        score += 11; 
+        details['मुर्दा (डायरेक्ट)'] = 11; 
       }
       else {
         let isMurFam = false;
@@ -258,7 +256,7 @@ export const calculatePrediction = (
       details['एवरग्रीन'] = 7; 
     }
     
-    // --- 5. मंथ ट्रेंड ---
+    // --- 5. मंथ ट्रेंड और डेट 22 ---
     if (selectedFormulas.includes('9') && currentMonthNums.includes(jodi)) { 
       score += 3; 
       details['मंथ ट्रेंड'] = 3; 
@@ -283,7 +281,7 @@ export const calculatePrediction = (
       }
     }
 
-    // --- 6. दाना ट्रैप ---
+    // --- 6. दाना ट्रैप (TXT रिपोर्ट के अनुसार 9 और 5 पॉइंट) ---
     if (past4DaysMurda && past4DaysMurda.length > 0) {
       let gotHighDana = false;
       let gotLowDana = false;
@@ -293,8 +291,8 @@ export const calculatePrediction = (
         else if ([4, 5, 6, 7, 8, 9, 40, 50, 60, 70, 80, 90].includes(diff)) gotLowDana = true;
       }
       if (gotHighDana) {
-        score += 10;
-        details['दाना ट्रैप (हाई)'] = 10;
+        score += 9;
+        details['दाना ट्रैप (हाई)'] = 9;
       } else if (gotLowDana) {
         score += 5;
         details['दाना ट्रैप (लो)'] = 5;
@@ -340,13 +338,13 @@ export const calculatePrediction = (
       }
     }
 
-    // --- नया ट्रिगर 1: लॉजिक 3 अप्लाई करना ---
+    // --- नया ट्रिगर 1: लॉजिक 3 ---
     if (isLogic3Active && LOGIC_3_GROUP.includes(jodi)) {
       score += 10; 
       details['लॉजिक 3 जोड़ी'] = 10;
     }
 
-    // --- नया ट्रिगर 2: 30-40 अटैक अप्लाई करना ---
+    // --- नया ट्रिगर 2: 30-40 अटैक ---
     if (dayOfMonth <= 5 && FAMILY_30_40.includes(jodi) && !isFamily3040Dead) {
       const pts = 11 - dayOfMonth;
       score += pts; 
@@ -354,7 +352,7 @@ export const calculatePrediction = (
     }
 
     jodiScores[jodi] = score;
-    if (score > 0) scoreDetailsLog[jodi] = details; // 🟢 ट्रैकर में सेव करना
+    if (score > 0) scoreDetailsLog[jodi] = details; 
   }
 
   const sortedJodis = Object.keys(jodiScores).sort((a, b) => jodiScores[b] - jodiScores[a]);
@@ -364,7 +362,7 @@ export const calculatePrediction = (
   const l2 = final30.slice(4, 14);
   const l3 = final30.slice(14, 30);
 
-  // 🟢 === रिपोर्ट जनरेटर (फोटो जैसा फॉरमेट) === 🟢
+  // === रिपोर्ट जनरेटर === 
   let reportStr = `📅 साहिल मास्टर - प्रेडिक्शन ऑडिट रिपोर्ट (${inputs.date})\n`;
   reportStr += `-------------------------------------------------\n`;
   reportStr += `इस रिपोर्ट में आप देख सकते हैं कि कंप्यूटर ने किस जोड़ी को कितने पॉइंट और क्यों दिए हैं।\n\n`;
@@ -376,7 +374,7 @@ export const calculatePrediction = (
     reportStr += `#${(index + 1).toString().padStart(2, '0')}. जोड़ी [${jodi}] - कुल पॉइंट: ${jodiScores[jodi]}\n      कारण ➔ ${detailStr}\n\n`;
   });
 
-  // ओरिजिनल टोकरी नियम (पलट के साथ)
+  // ओरिजिनल टोकरी 
   const getPalat = (j: string) => {
     if (j === '00') return '00';
     return j.split('').reverse().join('');
